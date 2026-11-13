@@ -1,0 +1,41 @@
+# 打标签时构建并发布可下载的静态包
+#
+# 用法：git tag v0.1.0 && git push origin v0.1.0
+# 产物会作为 zip 附件挂到 GitHub Release 上。
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建
+        run: npm run build
+
+      - name: 打包静态产物
+        run: |
+          cd dist
+          zip -r ../ariang-next-${{ github.ref_name }}.zip .
+          cd ..
+
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ariang-next-${{ github.ref_name }}.zip
+          generate_release_notes: true
