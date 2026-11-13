@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>AriaNg-Next · 侧栏间距修复前后对比</title>
+<style>
+  body {
+    margin: 0;
+    padding: 40px 32px 56px;
+    background: #f7f5f0;
+    color: #14171e;
+    font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: #7c7a72; font-size: 13px; margin-bottom: 28px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .panel { background: #fff; border: 1px solid #e9e3d6; border-radius: 14px; overflow: hidden; }
+  .panel__head { padding: 12px 16px; border-bottom: 1px solid #e9e3d6; display: flex; align-items: center; gap: 8px; }
+  .tag { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+  .tag--bad { background: rgba(176,65,65,.12); color: #b04141; }
+  .tag--good { background: rgba(44,122,77,.12); color: #2c7a4d; }
+  .panel__title { font-size: 14px; font-weight: 600; }
+  .panel__meta { font-size: 11px; color: #98a1ad; margin-left: auto; font-family: Consolas, monospace; }
+  .crop { position: relative; overflow: hidden; background: #12151a; }
+  .crop img { position: absolute; display: block; }
+  .note { padding: 12px 16px; font-size: 12.5px; color: #3a4256; border-top: 1px solid #e9e3d6; }
+  .note code { font-family: Consolas, monospace; background: #f1f3f5; padding: 1px 5px; border-radius: 3px; font-size: 11.5px; }
+  .arrow { text-align: center; font-size: 30px; color: #2f6f5e; margin: 18px 0 6px; }
+  .cause { margin-top: 26px; background: #fff; border: 1px solid #e9e3d6; border-radius: 14px; padding: 18px 22px; }
+  .cause h2 { font-size: 16px; margin: 0 0 10px; }
+  .cause ol { margin: 0; padding-left: 20px; font-size: 14px; color: #3a4256; }
+  .cause li { margin-bottom: 8px; }
+  .cause code { font-family: Consolas, monospace; background: #f1f3f5; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  .fix { margin-top: 18px; padding: 14px 16px; border-radius: 10px; background: rgba(47,111,94,.08); border: 1px solid rgba(47,111,94,.22); font-size: 14px; }
+  .fix code { font-family: Consolas, monospace; background: rgba(127,127,127,.14); padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  .fix b { color: #2f6f5e; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>侧栏间距修复 · 前后对比</h1>
+  <div class="sub">两张图均由 <b>本机真实 Firefox</b>（headless，1920×1080）渲染同一份代码，差异仅一处 CSS 声明。</div>
+
+  <div class="grid">
+    <!-- 修复前 -->
+    <div class="panel">
+      <div class="panel__head">
+        <span class="tag tag--bad">修复前</span>
+        <span class="panel__title">.an-nav-item 缺少 text-align: left</span>
+        <span class="panel__meta">Firefox</span>
+      </div>
+      <!-- 裁剪区域：x 0..250, y 170..340，放大 1.8 倍 -->
+      <div class="crop" style="width:450px;height:306px;">
+        <img src="ff-check-before.png" style="left:0; top:-306px; width:3456px;" alt="修复前侧栏" />
+      </div>
+      <div class="note">
+        图标在左，文字却被推到 <code>x≈108</code>，中间空出约 <b>70px</b> 空洞。
+        文字之所以跑到中间，是因为它继承了 <code>&lt;button&gt;</code> 的 <code>text-align: center</code>，
+        而承载它的 <code>.an-nav-item__label</code> 是 <code>flex: 1</code>，被拉伸成了 167px 宽的盒子。
+      </div>
+    </div>
+
+    <!-- 修复后 -->
+    <div class="panel">
+      <div class="panel__head">
+        <span class="tag tag--good">修复后</span>
+        <span class="panel__title">补上 text-align: left</span>
+        <span class="panel__meta">Firefox</span>
+      </div>
+      <div class="crop" style="width:450px;height:306px;">
+        <img src="ff-check-tasks.png" style="left:0; top:-306px; width:3456px;" alt="修复后侧栏" />
+      </div>
+      <div class="note">
+        文字回到图标右侧 <code>x≈45</code>，与图标结束位置（<code>x≈36</code>）相距正好 <b>8px</b>，
+        恰好等于设计令牌 <code>--an-space-2</code>。右侧计数徽章仍保持右对齐。
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <div class="cause">
+    <h2>根因与修复</h2>
+    <ol>
+      <li>浏览器给 <code>&lt;button&gt;</code> 的默认样式包含 <code>text-align: center</code>，这个值会<b>被子元素继承</b>。</li>
+      <li><code>.an-nav-item__label</code> 是 <code>flex: 1</code>，在 flex 布局里会被拉伸到占满剩余空间。</li>
+      <li>文字一旦继承了 <code>center</code>，就会在拉伸后的盒子里<b>居中</b>，于是与左侧图标之间出现巨大空隙。</li>
+      <li>同页面的「诊断 / 外观与 CSS / 设置」是 <code>&lt;a&gt;</code>（RouterLink），没有这个默认值，所以一直是对的 —— 这正是定位问题的突破口。</li>
+    </ol>
+    <div class="fix">
+      <b>修复：</b>在 <code>.an-nav-item</code> 里显式声明 <code>text-align: left</code>。
+      同一页面里的 <code>.an-host-item</code>（主机列表）早就有这一句，所以「本机 aria2-next」一直显示正常 —— 只有任务状态分段那几行漏了。
+      <br />该规则已在源码中附带注释说明原因，避免后续「优化」时被误删。
+    </div>
+  </div>
+</div>
+</body>
+</html>

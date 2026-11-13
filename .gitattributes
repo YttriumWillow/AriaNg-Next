@@ -1,0 +1,13 @@
+# 统一换行符：仓库里存 LF，工作区按平台自动转换
+# 这样 Windows / Linux / macOS 协作时不会整个文件变成差异
+* text=auto eol=lf
+
+# 二进制文件不做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.zip binary

@@ -1,0 +1,210 @@
+/*
+ * 令牌层：全部设计变量的定义。
+ *
+ * 换主题 = 换一组变量值；用户改令牌 = 覆盖其中几个。
+ * 组件层只允许通过 var(--an-*) 引用颜色与尺寸 —— 这是「一处可改」的前提。
+ *
+ * ============================ 配色思路 ============================
+ *
+ * 主色取自 MiniMax 控制台的粉色 #f2acba，但**不能直接拿它当文字色** ——
+ * #f2acba 在白底上的对比度只有 1.84:1，连大号文字都达不到 AA。
+ *
+ * 所以把它拆成两个角色：
+ *
+ *   --an-accent       #B8435F  文字主色（链接、激活态、图标）
+ *                              白底 5.24:1，粉色浅底 4.65:1 ✅
+ *   --an-accent-fill  #F2ACBA  品牌填充色（主按钮、Logo、进度条渐变端）
+ *                              配深墨字 #2A1219 有 9.50:1 ✅
+ *
+ * 另外借鉴 MiniMax 官网的两条手法：
+ *   1. 底色不用冷灰，改用**带粉调的暖中性**（#FAF7F8 / #161113），整体更柔和
+ *   2. 阴影带品牌色（MiniMax 用紫调阴影 rgba(44,30,116,.16)），这里用粉调阴影
+ *
+ * 语义色取自 MiniMax 设计系统：成功 #1ba673（这里加深到 #157a54 以过 AA）、
+ * 危险 #D01316（这里用 #c0392f）、信息用品牌蓝 #1456f0 系（这里用 #1f63c4）。
+ * ====================================================================
+ */
+
+@layer tokens {
+  :root {
+    /* ---------- 字体 ---------- */
+    /*
+     * 字体栈说明（按可用性从左到右回退）：
+     *   Inter / system-ui  拉丁字母
+     *   思源黑（Source Han Sans SC）/ Noto Sans SC   思源系黑体，开源、字重全
+     *   苹方 / 微软雅黑      macOS / Windows 自带中文黑体
+     *   等线（DengXian）     Windows 自带的中文无衬线，偏"文档"气质
+     *
+     * ⚠️ 界面上的**绝大部分文字都不该用等宽字体** —— 等宽是"代码"的视觉语言，
+     *    把它用在标题、徽章、版本号这类显眼位置会显得很"机器味"。
+     *    等宽只留给：CSS 编辑器、令牌变量名、行内代码。
+     */
+    --an-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
+      'Hiragino Sans GB', 'Source Han Sans SC', 'Noto Sans SC', 'Microsoft YaHei',
+      'DengXian', '等线', sans-serif;
+    --an-font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Consolas,
+      'Cascadia Mono', 'Microsoft YaHei Mono', monospace;
+
+    --an-text-xs: 11px;
+    --an-text-sm: 12.5px;
+    --an-text-md: 14px;
+    --an-text-lg: 16px;
+    --an-text-xl: 19px;
+    --an-text-2xl: 25px;
+
+    /* ---------- 间距 ---------- */
+    --an-space-1: 4px;
+    --an-space-2: 8px;
+    --an-space-3: 12px;
+    --an-space-4: 16px;
+    --an-space-5: 22px;
+    --an-space-6: 30px;
+
+    /* ---------- 圆角 ---------- */
+    --an-radius-sm: 6px;
+    --an-radius-md: 10px;
+    --an-radius-lg: 14px;
+    --an-radius-pill: 999px;
+
+    /* ---------- 颜色（亮色主题 · 暖中性 + 玫瑰主色） ---------- */
+    --an-bg: #faf7f8;
+    --an-surface: #ffffff;
+    --an-surface-2: #f5f1f2;
+    --an-surface-hover: #f0eaec;
+    --an-border: #eae2e5;
+    --an-border-strong: #dcd1d6;
+
+    --an-text: #1b1517;
+    --an-text-muted: #5c5358;
+    --an-text-faint: #9a9096;
+
+    /* 文字主色 */
+    --an-accent: #b8435f;
+    --an-accent-hover: #a03a53;
+    /* 品牌填充色（MiniMax 控制台粉） */
+    --an-accent-fill: #f2acba;
+    --an-accent-fill-hover: #e89bab;
+    /* 填充色上的文字色 */
+    --an-accent-contrast: #2a1219;
+    /* 浅粉底块（激活项、徽章底） */
+    --an-accent-soft: rgba(242, 172, 186, 0.2);
+
+    --an-success: #157a54;
+    --an-success-soft: rgba(21, 122, 84, 0.12);
+    --an-warning: #8a5a15;
+    --an-warning-soft: rgba(138, 90, 21, 0.13);
+    --an-danger: #c0392f;
+    --an-danger-soft: rgba(192, 57, 47, 0.11);
+    --an-info: #1f63c4;
+    --an-info-soft: rgba(31, 99, 196, 0.11);
+
+    /* ---------- 阴影（带品牌色，借鉴 MiniMax 的紫调阴影手法） ---------- */
+    --an-shadow-1: 0 1px 2px rgba(92, 26, 48, 0.06);
+    --an-shadow-2: 0 6px 20px -6px rgba(92, 26, 48, 0.16);
+    --an-shadow-3: 0 18px 48px -12px rgba(92, 26, 48, 0.28);
+
+    /* ---------- 布局 ---------- */
+    --an-sidebar-width: 232px;
+    --an-drawer-width: 420px;
+    --an-topbar-height: 56px;
+
+    /* ---------- 动效 ---------- */
+    --an-transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+    --an-transition-slow: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ---------- 毛玻璃专用（亮/暗主题下都是「不透明」） ---------- */
+    --an-surface-alpha: 1;
+    --an-backdrop-blur: 0px;
+    --an-backdrop-image: none;
+    --an-backdrop-attachment: fixed;
+  }
+
+  /* ---------------- 暗色主题（暖调近黑） ---------------- */
+  [data-theme='dark'] {
+    --an-bg: #161113;
+    --an-surface: #1e181a;
+    --an-surface-2: #272023;
+    --an-surface-hover: #2e2629;
+    --an-border: #322a2d;
+    --an-border-strong: #463a3f;
+
+    --an-text: #f0e9eb;
+    --an-text-muted: #a99da2;
+    --an-text-faint: #7a6e73;
+
+    /* 粉色在深底上对比度 10.13:1，直接当文字色 */
+    --an-accent: #f2acba;
+    --an-accent-hover: #f7c1cc;
+    --an-accent-fill: #f2acba;
+    --an-accent-fill-hover: #f7c1cc;
+    --an-accent-contrast: #1a0f13;
+    --an-accent-soft: rgba(242, 172, 186, 0.16);
+
+    --an-success: #4cb47c;
+    --an-success-soft: rgba(76, 180, 124, 0.15);
+    --an-warning: #d6a051;
+    --an-warning-soft: rgba(214, 160, 81, 0.15);
+    --an-danger: #e0736f;
+    --an-danger-soft: rgba(224, 115, 111, 0.15);
+    --an-info: #6ba3d8;
+    --an-info-soft: rgba(107, 163, 216, 0.15);
+
+    --an-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --an-shadow-2: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
+    --an-shadow-3: 0 18px 48px -12px rgba(0, 0, 0, 0.7);
+  }
+
+  /* ---------------- 毛玻璃主题（可选） ---------------- */
+  [data-theme='glass'] {
+    --an-bg: #2b2026;
+    --an-surface: rgba(255, 255, 255, 0.58);
+    --an-surface-2: rgba(255, 255, 255, 0.4);
+    --an-surface-hover: rgba(255, 255, 255, 0.76);
+    --an-border: rgba(255, 255, 255, 0.34);
+    --an-border-strong: rgba(255, 255, 255, 0.52);
+
+    --an-text: #1b1517;
+    --an-text-muted: #4a5563;
+    --an-text-faint: #77828f;
+
+    /* 玻璃底是浅色，主色要更深才读得清 */
+    --an-accent: #a83d57;
+    --an-accent-hover: #8f3049;
+    --an-accent-fill: #f2acba;
+    --an-accent-fill-hover: #e89bab;
+    --an-accent-contrast: #2a1219;
+    --an-accent-soft: rgba(242, 172, 186, 0.34);
+
+    --an-success: #1f7a4c;
+    --an-warning: #8a5a15;
+    --an-danger: #a63b3b;
+    --an-info: #2f5f8f;
+
+    --an-shadow-1: 0 1px 2px rgba(40, 12, 22, 0.08);
+    --an-shadow-2: 0 6px 20px -6px rgba(40, 12, 22, 0.22);
+    --an-shadow-3: 0 18px 48px -12px rgba(40, 12, 22, 0.4);
+
+    --an-surface-alpha: 0.58;
+    --an-backdrop-blur: 24px;
+    /*
+     * 毛玻璃的底图是有讲究的：
+     * 底图太暗，60% 白叠上去就成"脏灰"，玻璃的通透感全没了。
+     * 所以底图要**亮且有色相变化**（浅粉 → 洋红），
+     * 再叠一层白色高光，这样卡片边缘才会出现有层次的折射感。
+     */
+    --an-backdrop-image:
+      radial-gradient(1000px 520px at 12% 6%, rgba(255, 255, 255, 0.6), transparent 62%),
+      radial-gradient(760px 420px at 88% 96%, rgba(255, 214, 228, 0.45), transparent 60%),
+      linear-gradient(135deg, #f7cad6 0%, #e493b3 46%, #a75a84 100%);
+  }
+
+  /* ---------------- 紧凑密度 ---------------- */
+  [data-density='compact'] {
+    --an-space-3: 9px;
+    --an-space-4: 12px;
+    --an-space-5: 16px;
+    --an-space-6: 22px;
+    --an-topbar-height: 48px;
+    --an-text-md: 13.5px;
+  }
+}
