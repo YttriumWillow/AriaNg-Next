@@ -46,6 +46,50 @@ aria2-next --enable-rpc --rpc-listen-port=6800 --rpc-listen-all=false --rpc-secr
 > 跨域时会被浏览器直接拦掉；WebSocket 不受这个限制。
 > 若必须用 `http://`，可以在开发时走 `vite.config.ts` 里已经配好的 `/rpc` 代理。
 
+### 起两个实例，验证多主机管理
+
+面板的「多主机」能力需要**两个以上真实实例**才能验证 ——
+单实例看不出「数据会不会串」。
+
+```bash
+# 实例 A
+aria2c.exe --conf-path=aria2-a.conf
+# 实例 B（换个端口、换个 secret、换个下载目录）
+aria2c.exe --conf-path=aria2-b.conf
+```
+
+最小配置（每个实例一份）：
+
+```ini
+enable-rpc=true
+rpc-listen-port=6801
+rpc-secret=lab-secret-a
+dir=F:\Project\aria2-lab\dl-a
+save-session=F:\Project\aria2-lab\state-a\aria2.session
+```
+
+关键点：**`dir` / `save-session` 必须各自独立**，否则两个实例会抢同一个下载目录，
+「数据隔离」就无从验证了。
+
+> ⚠️ **配置文件千万别带 UTF-8 BOM。**
+> aria2 会把 BOM 当成第一个选项的一部分，于是报出一个莫名其妙的名字：
+>
+> ```
+> Unknown option --锘縠nable-rpc
+> ```
+>
+> 那个 `锘縠` 就是 BOM 字节被当成 GBK 解码后的样子。
+> 用 PowerShell 写配置文件时，`Set-Content -Encoding UTF8` **会写 BOM**，
+> 得改用：
+>
+> ```powershell
+> [System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding($false)))
+> ```
+
+两个实例起来后，在面板里各加一台主机，就能验证：
+三台主机同时在线、切换正常、各自的任务列表互不干扰。
+完整结论见 [实测报告](./VERIFICATION.md) §4。
+
 ---
 
 ## 开发辅助工具（`tools/`）
