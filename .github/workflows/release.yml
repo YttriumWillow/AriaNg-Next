@@ -38,4 +38,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ariang-next-${{ github.ref_name }}.zip
+          # 自动生成的 notes 是一份**英文 commit 列表**，对中文用户不友好。
+          # 发布后记得手工替换成中文说明：
+          #   gh release edit v0.2.0 --notes-file notes.md --title 'v0.2.0 · 主题'
+          # 中文说明可以直接从 CHANGELOG.md 里整理。
           generate_release_notes: true
