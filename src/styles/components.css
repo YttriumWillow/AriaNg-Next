@@ -563,6 +563,26 @@
     gap: var(--an-space-2);
     font-size: var(--an-text-sm);
     cursor: pointer;
+    /* 用来定位内部那个视觉隐藏的 input */
+    position: relative;
+  }
+
+  /*
+   * 输入框要「视觉隐藏但仍可聚焦」，**不能用 display:none**。
+   *
+   * display:none 会把元素从无障碍树里彻底移除：
+   * 键盘用户 Tab 不到这个开关，也看不到焦点位置，更没法用空格键切换。
+   * 正确做法是让它保留在无障碍树里，只是视觉上不可见。
+   */
+  .an-switch__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .an-switch__track {
@@ -588,12 +608,28 @@
     transition: transform var(--an-transition);
   }
 
+  /*
+   * ⚠️⚠️ 修饰类必须挂在 **.an-switch（块）** 上，不能挂在 .an-switch__track 上。
+   *
+   * 这是一条**后代选择器**，含义是「.an-switch--on 内部的 .an-switch__track」。
+   * 后代选择器**永远不会匹配元素自身** ——
+   * 如果把 an-switch--on 和 an-switch__track 放在同一个元素上，
+   * 这条规则就永远不生效，开关的「开」状态就永远显示不出来。
+   *
+   * 这也符合 BEM 规范：修饰类修饰的是「块」，不是「元素」。
+   */
   .an-switch--on .an-switch__track {
-    background: var(--an-accent);
+    background: var(--an-switch-on);
   }
 
   .an-switch--on .an-switch__track::after {
     transform: translateX(15px);
+  }
+
+  /* 键盘聚焦时，把焦点环画在轨道上（因为真正的 input 是隐藏的） */
+  .an-switch:focus-within .an-switch__track {
+    outline: 2px solid var(--an-accent);
+    outline-offset: 2px;
   }
 
   /* ================================================================

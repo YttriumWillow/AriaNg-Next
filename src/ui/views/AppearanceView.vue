@@ -127,14 +127,14 @@ function resetCss(): void {
     <div class="an-card">
       <div class="an-card__head">
         <span class="an-card__title">{{ t('appearance.theme') }}</span>
-        <label class="an-switch">
+        <label class="an-switch" :class="{ 'an-switch--on': appearance.settings.followSystem }">
           <input
+            class="an-switch__input"
             type="checkbox"
-            style="display: none"
             :checked="appearance.settings.followSystem"
             @change="appearance.setFollowSystem(($event.target as HTMLInputElement).checked)"
           />
-          <span class="an-switch__track" :class="{ 'an-switch--on': appearance.settings.followSystem }" />
+          <span class="an-switch__track" />
           <span>{{ t('appearance.followSystem') }}</span>
         </label>
       </div>

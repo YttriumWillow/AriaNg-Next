@@ -211,9 +211,9 @@ onMounted(() => {
             <label class="an-field__label">{{ t('connection.pollInterval') }} ({{ t('connection.pollIntervalUnit') }})</label>
             <input v-model.number="draft.pollIntervalMs" class="an-input" type="number" min="200" step="100" />
           </div>
-          <label class="an-switch" style="align-self: end; padding-bottom: 6px">
-            <input v-model="draft.autoConnect" type="checkbox" style="display: none" />
-            <span class="an-switch__track" :class="{ 'an-switch--on': draft.autoConnect }" />
+          <label class="an-switch" :class="{ 'an-switch--on': draft.autoConnect }" style="align-self: end; padding-bottom: 6px">
+            <input v-model="draft.autoConnect" class="an-switch__input" type="checkbox" />
+            <span class="an-switch__track" />
             <span>{{ t('connection.autoConnect') }}</span>
           </label>
         </div>
