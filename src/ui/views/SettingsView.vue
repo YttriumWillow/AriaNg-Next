@@ -14,6 +14,9 @@ import { useToastStore } from '@/stores/toast'
 import { useI18n, LOCALES, setLocale, type Locale } from '@/i18n'
 import { useHostName } from '@/ui/composables/useHostName'
 import { getClient } from '@/core/rpc/registry'
+import { Aria2Client } from '@/core/rpc/aria2'
+import { createTransport } from '@/core/rpc/transport'
+import { describeError, TransportError } from '@/core/rpc/errors'
 import type { Aria2Options } from '@/core/rpc/types'
 
 type TabKey = 'hosts' | 'options' | 'language'
@@ -49,6 +52,69 @@ function startCreate(): void {
 
 function cancelEdit(): void {
   editingId.value = null
+  testResult.value = null
+  showSecret.value = false
+}
+
+/* ---------------- 测试连接 ---------------- */
+
+/** 密钥输入框是否显示明文。 */
+const showSecret = ref(false)
+
+/** 正在测试中。 */
+const testing = ref(false)
+
+/** 测试结果：成功显示版本号，失败显示可操作的错误提示。 */
+const testResult = ref<{ ok: boolean; text: string } | null>(null)
+
+/**
+ * 用**当前草稿**的地址与密钥试连一次。
+ *
+ * 为什么要有这个按钮？
+ * 因为「添加主机」是**先保存、后连接**的：填错密钥不会当场报错，
+ * 而是先留下一台红色的主机，再让你自己去猜是哪错了。
+ *
+ * 实测中最常见的误操作就是密钥 —— aria2 在密钥不匹配时只回一句
+ * "Unauthorized"，不填密钥的实例则连地址都对、状态点却是红的。
+ * 有一个当场就能出结果的按钮，能省掉大量猜测。
+ *
+ * ⚠️ 必须加超时：
+ * WsRpcTransport 在连不上时会**无限重连**，请求一直排队不返回 ——
+ * 不加超时的话这个按钮会永远转圈。
+ */
+async function testConnection(): Promise<void> {
+  const url = draft.value.url.trim()
+  if (!url) {
+    toast.error(t('connection.urlRequired'))
+    return
+  }
+
+  testing.value = true
+  testResult.value = null
+
+  // 用一个独立的 transport，不碰 hosts store 里的那些连接
+  const transport = createTransport({
+    url,
+    secret: draft.value.secret.trim() || undefined,
+    onStatus: () => {},
+  })
+  const client = new Aria2Client(transport)
+
+  try {
+    const version = await Promise.race([
+      client.getVersion(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new TransportError(t('connection.testTimeout'), 'aria2.getVersion')), 8000)
+      }),
+    ])
+    testResult.value = { ok: true, text: `${version.product} v${version.version}` }
+  } catch (error) {
+    testResult.value = { ok: false, text: describeError(error, t) }
+  } finally {
+    // 一定要关掉：WebSocket 会一直挂着，不关会漏连接
+    transport.close()
+    testing.value = false
+  }
 }
 
 async function saveHost(): Promise<void> {
@@ -206,7 +272,29 @@ onMounted(() => {
           </div>
           <div class="an-field">
             <label class="an-field__label">{{ t('connection.secret') }}</label>
-            <input v-model="draft.secret" class="an-input" type="password" />
+            <!--
+              密钥框带一个「显示/隐藏」开关。
+              因为密钥填错是添加主机时最常见的失败原因，
+              而 type="password" 会把填错的内容全部变成圆点 —— 用户根本没法核对。
+            -->
+            <div style="position: relative">
+              <input
+                v-model="draft.secret"
+                class="an-input"
+                :type="showSecret ? 'text' : 'password'"
+                style="padding-right: 38px"
+                autocomplete="off"
+              />
+              <button
+                class="an-btn an-btn--ghost an-btn--icon"
+                type="button"
+                :title="showSecret ? t('connection.hideSecret') : t('connection.showSecret')"
+                style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%);"
+                @click="showSecret = !showSecret"
+              >
+                <AppIcon :name="showSecret ? 'eye-off' : 'eye'" :size="15" />
+              </button>
+            </div>
             <span class="an-field__hint">{{ t('connection.secretHint') }}</span>
           </div>
           <div class="an-field">
@@ -219,8 +307,28 @@ onMounted(() => {
             <span>{{ t('connection.autoConnect') }}</span>
           </label>
         </div>
+
+        <!-- 测试结果：当场给出结论，而不是让人保存后再看红字 -->
+        <div
+          v-if="testResult"
+          class="an-note"
+          :class="testResult.ok ? 'an-note--success' : 'an-note--danger'"
+          style="margin: 0 0 12px"
+        >
+          <AppIcon :name="testResult.ok ? 'check' : 'alert'" :size="14" style="vertical-align: -2px; margin-right: 6px" />
+          {{ testResult.text }}
+        </div>
+
         <div class="an-dialog__foot">
           <button class="an-btn" type="button" @click="cancelEdit">{{ t('common.cancel') }}</button>
+          <!--
+            测试连接放在保存前面。
+            用户最怕的是「保存了才发现填错了」，所以先给一个当场出结果的按钮。
+          -->
+          <button class="an-btn" type="button" :disabled="testing" @click="testConnection">
+            <AppIcon class="an-btn__icon" name="activity" :size="14" />
+            {{ testing ? t('connection.testing') : t('connection.test') }}
+          </button>
           <button class="an-btn an-btn--primary" type="button" @click="saveHost">{{ t('common.save') }}</button>
         </div>
       </div>

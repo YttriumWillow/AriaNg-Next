@@ -58,6 +58,9 @@ export const zhCN: Record<string, string> = {
   'common.download': '下载',
   'common.upload': '上传',
   'common.error': '错误',
+  'error.rpcRejected': '服务端拒绝：{message}',
+  'error.transportFailed': '连接失败：{message}',
+  'error.unauthorized': '该主机要求 RPC 密钥：请点「编辑」填入 rpc-secret（对应 aria2 配置里的 rpc-secret）',
 
   /* ---------- 连接 ---------- */
   'connection.connected': '已连接',
@@ -71,6 +74,11 @@ export const zhCN: Record<string, string> = {
   'connection.secret': 'RPC 密钥',
   'connection.secretHint': '对应 aria2-next 的 --rpc-secret，留空表示不鉴权',
   'connection.test': '测试连接',
+  'connection.testing': '测试中…',
+  'connection.testTimeout': '连接超时（8 秒）',
+  'connection.urlRequired': '请先填写 RPC 地址',
+  'connection.showSecret': '显示密钥',
+  'connection.hideSecret': '隐藏密钥',
   'connection.addHost': '添加主机',
   'connection.editHost': '编辑主机',
   'connection.pollInterval': '轮询间隔',

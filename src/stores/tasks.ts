@@ -12,6 +12,7 @@ import { getClient } from '@/core/rpc/registry'
 import type { Aria2File, Aria2Peer, Aria2Tracker } from '@/core/rpc/types'
 import { normalizeTasks, type Task } from '@/core/model/task'
 import { describeError } from '@/core/rpc/errors'
+import { useI18n } from '@/i18n'
 
 /** 速率历史的一个采样点。 */
 export interface SpeedPoint {
@@ -53,6 +54,9 @@ export interface TaskDetail {
 const HISTORY_LIMIT = 300
 
 export const useTasksStore = defineStore('tasks', () => {
+  // 错误提示跟着界面语言走：把翻译函数注入 core 的 describeError
+  const { t } = useI18n()
+
   const byHost = reactive<Record<string, HostTaskState>>({})
   /** 当前在详情抽屉里查看的任务 */
   const detailGid = ref<string | null>(null)
@@ -118,7 +122,7 @@ export const useTasksStore = defineStore('tasks', () => {
         state.speedHistory.splice(0, state.speedHistory.length - HISTORY_LIMIT)
       }
     } catch (error) {
-      state.error = describeError(error)
+      state.error = describeError(error, t)
       state.loading = false
     }
   }
@@ -137,7 +141,7 @@ export const useTasksStore = defineStore('tasks', () => {
       return await action(client)
     } catch (error) {
       const state = stateFor(hostId)
-      state.error = describeError(error)
+      state.error = describeError(error, t)
       throw error
     }
   }

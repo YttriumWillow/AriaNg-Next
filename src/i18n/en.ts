@@ -56,6 +56,9 @@ export const en: Record<string, string> = {
   'common.download': 'Download',
   'common.upload': 'Upload',
   'common.error': 'Error',
+  'error.rpcRejected': 'Rejected by server: {message}',
+  'error.transportFailed': 'Connection failed: {message}',
+  'error.unauthorized': 'This host requires an RPC secret: click Edit and enter the rpc-secret from your aria2 config',
 
   /* ---------- connection ---------- */
   'connection.connected': 'Connected',
@@ -69,6 +72,11 @@ export const en: Record<string, string> = {
   'connection.secret': 'RPC secret',
   'connection.secretHint': 'Matches aria2-next --rpc-secret. Leave empty when not used.',
   'connection.test': 'Test connection',
+  'connection.testing': 'Testing…',
+  'connection.testTimeout': 'Connection timed out (8s)',
+  'connection.urlRequired': 'Enter an RPC URL first',
+  'connection.showSecret': 'Show secret',
+  'connection.hideSecret': 'Hide secret',
   'connection.addHost': 'Add host',
   'connection.editHost': 'Edit host',
   'connection.pollInterval': 'Poll interval',

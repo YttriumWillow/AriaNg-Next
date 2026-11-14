@@ -1558,6 +1558,21 @@
     color: var(--an-danger);
   }
 
+  /*
+   * 成功态用**成功绿**而不是品牌粉。
+   *
+   * 颜色分工是本项目的一条约定：
+   *   品牌粉 = 身份强调（你是谁、这是你的东西）
+   *   成功绿 = 状态语义（连接正常、测试通过、任务完成）
+   *
+   * 所以「测试连接成功」要用绿色，不能顺手拿品牌色来用 ——
+   * 那会让粉色同时承担「身份」和「成功」两种含义。
+   */
+  .an-note--success {
+    background: var(--an-success-soft);
+    color: var(--an-success);
+  }
+
   .an-note code {
     font-family: var(--an-font-mono);
     background: rgba(127, 127, 127, 0.16);

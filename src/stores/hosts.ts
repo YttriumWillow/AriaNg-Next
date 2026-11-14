@@ -17,6 +17,7 @@ import { createTransport, type TransportStatus } from '@/core/rpc/transport'
 import { probeCapabilities, type Capabilities } from '@/core/model/capability'
 import { Poller } from '@/core/scheduler/poller'
 import { loadJson, saveJson, STORAGE_KEYS } from '@/core/storage/persist'
+import { useI18n } from '@/i18n'
 import { useTasksStore } from './tasks'
 
 /** 一台 aria2-next 主机的配置。 */
@@ -98,6 +99,14 @@ export function dedupeHostIds(list: HostConfig[]): { list: HostConfig[]; changed
 }
 
 export const useHostsStore = defineStore('hosts', () => {
+  /*
+   * 错误提示要跟着界面语言走，所以这里拿一份翻译函数。
+   *
+   * core 的 describeError 不认识 i18n（它是零框架依赖的纯 TS），
+   * 做法是把 t() 当参数传进去 —— 和 taskStatusText 一个套路。
+   */
+  const { t } = useI18n()
+
   /* ---------------- 配置 ---------------- */
 
   const initialHosts = loadJson<HostConfig[]>(STORAGE_KEYS.hosts, [DEFAULT_HOST])
@@ -249,7 +258,7 @@ export const useHostsStore = defineStore('hosts', () => {
       startPolling(hostId, client)
     } catch (error) {
       runtime.status = 'error'
-      runtime.error = describeError(error)
+      runtime.error = describeError(error, t)
     }
   }
 
@@ -274,7 +283,7 @@ export const useHostsStore = defineStore('hosts', () => {
     const poller = new Poller({
       intervalMs: host?.pollIntervalMs ?? 1000,
       onError: (error) => {
-        runtime.error = describeError(error)
+        runtime.error = describeError(error, t)
       },
     })
 
