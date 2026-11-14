@@ -138,8 +138,10 @@ node tools/mock-aria2.mjs    # 监听 6801，面板填 ws://127.0.0.1:6801/jsonr
 
 | 文档 | 内容 |
 |---|---|
+| [CHANGELOG.md](CHANGELOG.md) | **更新日志** —— 每个版本改了什么 |
 | [docs/LEARNING.md](docs/LEARNING.md) | **学习路线** —— 从零读懂这个前端项目的八个步骤 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构说明 —— core/ui 分层、数据流、扩展指引 |
+| [docs/VERIFICATION.md](docs/VERIFICATION.md) | **实测报告** —— 各协议真实下载能力、多主机管理、实测中发现的缺陷 |
 | [docs/CUSTOM-CSS.md](docs/CUSTOM-CSS.md) | 自定义 CSS 与设计令牌 |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 开发环境、工具链、联调、FAQ |
 | [docs/design/wireframe-v0.1.html](docs/design/wireframe-v0.1.html) | 结构线框稿 |

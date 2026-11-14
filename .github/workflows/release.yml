@@ -1,6 +1,6 @@
 # 打标签时构建并发布可下载的静态包
 #
-# 用法：git tag v0.1.0 && git push origin v0.1.0
+# 用法：git tag v0.2.0 && git push origin v0.2.0
 # 产物会作为 zip 附件挂到 GitHub Release 上。
 name: Release
 
