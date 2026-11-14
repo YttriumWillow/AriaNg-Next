@@ -312,7 +312,9 @@
         <div class="wf-cols">
           <div class="wf-side">
             <div class="wf-nav" style="color:var(--primary);font-weight:600"><span class="bl" style="background:var(--primary)"></span>AriaNg-Next</div>
-            <div class="wf-t" style="margin-top:6px">连接</div>
+            <div class="wf-t" style="margin-top:6px">概览</div>
+            <div class="wf-nav"><span class="bl"></span>仪表盘</div>
+            <div class="wf-t" style="margin-top:8px">主机</div>
             <div class="wf-nav"><span class="bl"></span>NAS-01 · 已连接</div>
             <div class="wf-nav"><span class="bl"></span>NAS-02 · 离线</div>
             <div class="wf-t" style="margin-top:8px">任务</div>
@@ -348,8 +350,8 @@
         </div>
       </div>
       <div class="notes">
-        <div class="note"><span class="n">1</span><div><b>侧栏只放“上下文”</b>：主机切换 + 任务状态分段 + 工具入口。主机列表与任务分段在侧栏互相独立，AriaNg 的多主机能力在这里被抬到一级。</div></div>
-        <div class="note"><span class="n">2</span><div><b>顶部常驻状态胶囊</b>：连接、版本、总上/下速、暂停全部、添加任务。它不随路由变化，是唯一的“全局作用域”。</div></div>
+        <div class="note"><span class="n">1</span><div><b>侧栏只放“上下文”</b>：概览（仪表盘）+ 主机切换 + 任务状态分段 + 工具入口。主机列表与任务分段在侧栏互相独立，AriaNg 的多主机能力在这里被抬到一级；点击主机项会切换主机并回到仪表盘。</div></div>
+        <div class="note"><span class="n">2</span><div><b>身份信息在品牌块，全局操作在顶栏</b>：左上角的渐变品牌块承载产品名、核心连接状态与版本号（可点击回仪表盘）；顶栏只留暂停/恢复全部、刷新、添加任务；全局速率移到侧栏左下角 —— 身份与操作分开，层级才清晰。</div></div>
         <div class="note"><span class="n">3</span><div><b>主区承载任务流</b>：仪表盘 / 任务列表 / 完成的详情，全部在这一层切换，不做整页刷新。</div></div>
         <div class="note"><span class="n">4</span><div><b>右侧抽屉 = 任务详情</b>：文件树、peer、tracker、诊断全在里面，保持列表上下文（AriaNg 的“详情页跳转”是这里最大的改进点）。</div></div>
       </div>
@@ -424,7 +426,7 @@
       </div>
       <div class="notes">
         <div class="note"><span class="n">1</span><div><b>统计块不做大数字炫耀</b>：每块强制携带一行 breakdown（协议构成 / 峰值），避免“看总数不知道在忙什么”。</div></div>
-        <div class="note"><span class="n">2</span><div><b>速率图双线</b>：实线下载、虚线上传。窗口切换沿用 AriaNg 的历史粒度概念，但直接落在顶栏而不是藏在图表右上角。</div></div>
+        <div class="note"><span class="n">2</span><div><b>速率图双线</b>：实线下载、虚线上传。</div></div>
         <div class="note"><span class="n">3</span><div><b>协议分布是 aria2-next 的第一个差异点</b>：ED2K / HLS / DASH 徽章只有能力探测通过才出现。</div></div>
         <div class="note"><span class="n">4</span><div><b>异常数单列且给红色</b>：这是下载管理器里唯一真正需要“立刻处理”的数字，不埋在任务列表里等人去发现。</div></div>
       </div>
@@ -956,7 +958,7 @@
         <tbody>
           <tr><td>多 RPC 主机 / 切换</td><td><span class="tag keep">保留</span></td><td>侧栏一级主机切换器 + 每主机独立连接状态与能力探测</td></tr>
           <tr><td>JSON-RPC（WS / WSS / HTTP）+ secret</td><td><span class="tag keep">保留</span></td><td>连接层抽象：WS 优先、失败降级 HTTP；超时与重连策略可见</td></tr>
-          <tr><td>增量轮询（只取变化、省带宽）</td><td><span class="tag keep">保留</span></td><td>差量合并 + 可调轮询间隔；顶栏显示当前刷新节奏</td></tr>
+          <tr><td>增量轮询（只取变化、省带宽）</td><td><span class="tag keep">保留</span></td><td>差量合并 + 可调轮询间隔（在「设置 → 主机」里按主机配置）</td></tr>
           <tr><td>任务分组 active / waiting / stopped</td><td><span class="tag keep">保留</span></td><td>统一为「任务中心」状态分段，侧栏带实时计数</td></tr>
           <tr><td>排序 / 搜索 / 过滤 / 拖拽调序</td><td><span class="tag keep">保留</span></td><td>表格视图内直接实现；卡片视图下拖拽改为长按排序</td></tr>
           <tr><td>任务详情：文件树 / peer / tracker</td><td><span class="tag redo">重做</span></td><td>改为右侧抽屉五分段（概览/文件/邻居/轨道/诊断）</td></tr>

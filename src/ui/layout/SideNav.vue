@@ -2,11 +2,12 @@
 /**
  * 侧边导航。
  *
- * 侧栏从上到下承担四个角色：
- *  1. 品牌块 —— 产品名 + aria2-next 核心的连接状态 + 版本号（身份信息）
- *  2. 主机 —— 连接对象。AriaNg 里放在设置里，这里提到一级
- *  3. 任务状态分段 —— 带实时计数
- *  4. 工具入口
+ * 侧栏从上到下承担五个角色：
+ *  1. 品牌块 —— 产品名 + aria2-next 核心的连接状态 + 版本号（身份信息，可点击回仪表盘）
+ *  2. 概览 —— 仪表盘，整个面板的总入口
+ *  3. 主机 —— 连接对象。AriaNg 里放在设置里，这里提到一级
+ *  4. 任务状态分段 —— 带实时计数
+ *  5. 工具入口
  *
  * 底部另有一行全局速率。
  *
@@ -94,12 +95,29 @@ function statusClass(hostId: string): string {
   if (runtime.status === 'error') return 'an-status-dot--error'
   return ''
 }
+
+/**
+ * 切换到某台主机，并回到仪表盘。
+ *
+ * 为什么切换主机后要跳转？
+ * 因为「这台主机现在怎么样」这个问题，答案就在仪表盘上 ——
+ * 活跃任务数、总速率、异常分布、协议分布。
+ * 停在任务列表页只能看到任务，看不到主机整体状态。
+ */
+async function selectHost(hostId: string): Promise<void> {
+  hosts.selectHost(hostId)
+  await router.push('/dashboard')
+}
 </script>
 
 <template>
   <aside class="an-sidebar">
-    <!-- 品牌块：产品名 + 核心连接状态 + 版本号 -->
-    <div class="an-brand">
+    <!--
+      品牌块：产品名 + 核心连接状态 + 版本号。
+      整块可点击回到仪表盘 —— logo 回首页是通用惯例，
+      窄屏下它会缩成一个 40×40 的小方块，正好当主页按钮用。
+    -->
+    <RouterLink class="an-brand" to="/dashboard" :title="t('nav.dashboard')">
       <span class="an-brand__mark">A</span>
       <div class="an-brand__name">{{ t('app.title') }}</div>
       <div class="an-brand__meta">
@@ -109,6 +127,15 @@ function statusClass(hostId: string): string {
         </span>
         <span v-if="version" class="an-brand__version">v{{ version }}</span>
       </div>
+    </RouterLink>
+
+    <!-- 概览：仪表盘是整个面板的总入口 -->
+    <div class="an-sidebar__section">
+      <div class="an-sidebar__section-title">{{ t('nav.overview') }}</div>
+      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/dashboard') }" to="/dashboard">
+        <AppIcon class="an-nav-item__icon" name="dashboard" />
+        <span class="an-nav-item__label">{{ t('nav.dashboard') }}</span>
+      </RouterLink>
     </div>
 
     <!-- 主机 -->
@@ -121,7 +148,7 @@ function statusClass(hostId: string): string {
           class="an-host-item"
           :class="{ 'an-host-item--active': host.id === hosts.activeHostId }"
           type="button"
-          @click="hosts.selectHost(host.id)"
+          @click="selectHost(host.id)"
         >
           <span class="an-status-dot" :class="statusClass(host.id)" />
           <span class="an-host-item__name">{{ host.name }}</span>

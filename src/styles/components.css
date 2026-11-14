@@ -61,6 +61,15 @@
     box-shadow: var(--an-shadow-1);
     /* 给一个明确的高度，让它成为侧栏里一个有分量的「品牌块」 */
     min-height: 140px;
+    /* 它是一个链接（点回仪表盘） */
+    text-decoration: none;
+    transition: box-shadow var(--an-transition), transform var(--an-transition);
+  }
+
+  /* 品牌块的悬停反馈 —— 它可点击，得让人看出来 */
+  .an-brand:hover {
+    box-shadow: var(--an-shadow-2);
+    transform: translateY(-1px);
   }
 
   /* 顶部一层白色高光 —— 让渐变有陶瓷/玻璃的质感，而不是一块死板的色块 */

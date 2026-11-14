@@ -9,6 +9,7 @@ export const en: Record<string, string> = {
 
   /* ---------- nav ---------- */
   'nav.dashboard': 'Dashboard',
+  'nav.overview': 'Overview',
   'nav.downloading': 'Downloading',
   'nav.waiting': 'Waiting',
   'nav.completed': 'Completed',

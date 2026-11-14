@@ -11,6 +11,7 @@ export const zhCN: Record<string, string> = {
 
   /* ---------- 导航 ---------- */
   'nav.dashboard': '仪表盘',
+  'nav.overview': '概览',
   'nav.downloading': '下载中',
   'nav.waiting': '等待中',
   'nav.completed': '已完成',
