@@ -21,6 +21,7 @@ import AppIcon from '@/ui/components/AppIcon.vue'
 import { useHostsStore } from '@/stores/hosts'
 import { useTasksStore } from '@/stores/tasks'
 import { useI18n } from '@/i18n'
+import { useHostName } from '@/ui/composables/useHostName'
 import { formatSpeed } from '@/core/model/format'
 
 const route = useRoute()
@@ -28,6 +29,7 @@ const router = useRouter()
 const hosts = useHostsStore()
 const tasks = useTasksStore()
 const { t } = useI18n()
+const { hostName } = useHostName()
 
 const runtime = computed(() => (hosts.activeHostId ? hosts.runtimeFor(hosts.activeHostId) : null))
 
@@ -151,7 +153,7 @@ async function selectHost(hostId: string): Promise<void> {
           @click="selectHost(host.id)"
         >
           <span class="an-status-dot" :class="statusClass(host.id)" />
-          <span class="an-host-item__name">{{ host.name }}</span>
+          <span class="an-host-item__name">{{ hostName(host) }}</span>
         </button>
       </div>
     </div>

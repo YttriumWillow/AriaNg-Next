@@ -54,13 +54,71 @@ export const DEFAULT_HOST: HostConfig = {
   autoConnect: true,
 }
 
+/**
+ * 修掉重复的主机 id。
+ *
+ * ⚠️ 这段历史包袱值得单独说明：
+ *
+ * 早期版本用 `host-${Date.now().toString(36)}` 生成 id。Date.now() 的精度只有
+ * **毫秒**，而用户完全可能在同一毫秒里添加两台主机 —— 比如照着一份配置文档
+ * 连着填两行再点两次保存。两台主机会拿到**完全相同的 id**。
+ *
+ * 后果很隐蔽：hosts 数组里确实有两条记录，但所有按 id 查找的操作
+ * （selectHost / updateHost / removeHost / runtimeFor）都只会命中**第一条**。
+ * 第二台从界面上看「连接正常、状态点是绿的」，你却永远切不过去，
+ * 点它的名字也只会操作第一台 —— 一个连上了但摸不到的幽灵主机。
+ *
+ * 现在生成 id 的逻辑已经加了随机后缀（见 generateHostId），
+ * 但用户的浏览器里可能还存着旧版本写下的脏数据，
+ * 所以加载时顺手去重一次，保证存量用户也不会中招。
+ *
+ * 去重策略：**保留第一台的 id 不动**，只给后面的重复项换新 id。
+ * 这样 activeHostId 指向的仍然是原来那台，行为符合直觉。
+ */
+export function dedupeHostIds(list: HostConfig[]): { list: HostConfig[]; changed: boolean } {
+  const seen = new Set<string>()
+  let changed = false
+
+  const result = list.map((host) => {
+    if (!seen.has(host.id)) {
+      seen.add(host.id)
+      return host
+    }
+    changed = true
+    // 换一个当前列表里没人用的 id
+    let id = ''
+    do {
+      id = `host-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+    } while (seen.has(id))
+    seen.add(id)
+    return { ...host, id }
+  })
+
+  return { list: result, changed }
+}
+
 export const useHostsStore = defineStore('hosts', () => {
   /* ---------------- 配置 ---------------- */
 
-  const hosts = ref<HostConfig[]>(
-    loadJson<HostConfig[]>(STORAGE_KEYS.hosts, [DEFAULT_HOST]),
+  const initialHosts = loadJson<HostConfig[]>(STORAGE_KEYS.hosts, [DEFAULT_HOST])
+  const deduped = dedupeHostIds(initialHosts)
+
+  const hosts = ref<HostConfig[]>(deduped.list)
+
+  /*
+   * activeHostId 要做一次存在性校验。
+   *
+   * 它是从 localStorage 里读出来的缓存值，完全可能指向一台已经被删掉的主机
+   * （比如用户在另一个标签页删了，这边的缓存还没刷新）。
+   * 这种情况下如果直接沿用，所有按 activeHostId 取数据的 computed 都会拿到
+   * undefined，界面表现是「一片空白但也不报错」—— 最难排查的那种问题。
+   */
+  const storedActiveHostId = loadJson<string>(STORAGE_KEYS.activeHostId, '')
+  const activeHostId = ref<string>(
+    hosts.value.some((host) => host.id === storedActiveHostId)
+      ? storedActiveHostId
+      : (hosts.value[0]?.id ?? ''),
   )
-  const activeHostId = ref<string>(loadJson<string>(STORAGE_KEYS.activeHostId, hosts.value[0]?.id ?? ''))
 
   /** 每个主机的运行时状态。用 reactive 而不是 ref，方便按 id 动态增删。 */
   const runtimes = reactive<Record<string, HostRuntime>>({})
@@ -101,8 +159,31 @@ export const useHostsStore = defineStore('hosts', () => {
 
   /* ---------------- 增删改 ---------------- */
 
+  /**
+   * 生成一个当前列表里没人用的主机 id。
+   *
+   * ⚠️ 千万不要图省事只用 `Date.now().toString(36)`。
+   *
+   * Date.now() 的精度是**毫秒**。用户照着配置文档连着添加两台主机时，
+   * 两次点击完全可能落在同一毫秒里 —— 那么两台主机会拿到同一个 id，
+   * 界面就再也切不过去第二台了（详见 dedupeHostIds 的注释）。
+   *
+   * 所以这里用「时间戳 + 随机后缀」，并且额外做一次冲突检测兜底。
+   * 随机后缀用的是 Math.random().toString(36).slice(2, 8)：
+   *   toString(36) 把数字转成 36 进制字符串（0-9a-z），
+   *   slice(2, 8) 去掉开头恒定的 "0."，取 6 位有效字符。
+   */
+  function generateHostId(): string {
+    const taken = hosts.value.map((host) => host.id)
+    let id = ''
+    do {
+      id = `host-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+    } while (taken.includes(id))
+    return id
+  }
+
   function addHost(config: Omit<HostConfig, 'id'>): HostConfig {
-    const host: HostConfig = { ...config, id: `host-${Date.now().toString(36)}` }
+    const host: HostConfig = { ...config, id: generateHostId() }
     hosts.value.push(host)
     persist()
     return host

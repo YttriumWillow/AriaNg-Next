@@ -15,7 +15,9 @@ import ProtocolBadge from '@/ui/components/ProtocolBadge.vue'
 import { useHostsStore } from '@/stores/hosts'
 import { useTasksStore } from '@/stores/tasks'
 import { useI18n } from '@/i18n'
-import { formatBytes, formatDuration, formatEta, formatPercent, formatSpeed } from '@/core/model/format'
+import { formatBytes, formatDuration, formatEta, formatSpeed } from '@/core/model/format'
+// 状态文案的规则在 core 里（错误状态优先于媒体阶段），这里只注入翻译函数
+import { taskProgressText, taskStatusText } from '@/core/model/task'
 
 const hosts = useHostsStore()
 const tasks = useTasksStore()
@@ -72,7 +74,7 @@ function close(): void {
               'an-badge--danger': task.status === 'error',
               'an-badge--warning': task.status === 'paused',
             }">
-              {{ task.media ? task.media.state : t(`status.${task.status}`) }}
+              {{ taskStatusText(task, t) }}
             </span>
           </div>
           <div class="an-drawer__title" :title="task.name">{{ task.name }}</div>
@@ -103,7 +105,7 @@ function close(): void {
           <div>
             <ProgressBar :progress="task.media?.live ? 0 : task.progress" :variant="task.status === 'error' ? 'error' : 'default'" />
             <div class="an-drawer__meta" style="margin-top: 5px">
-              {{ task.media?.live ? t('status.active') : formatPercent(task.progress) }}
+              {{ taskProgressText(task, t) }}
               <span v-if="task.totalLength > 0"> · {{ formatBytes(task.completedLength) }} / {{ formatBytes(task.totalLength) }}</span>
             </div>
           </div>

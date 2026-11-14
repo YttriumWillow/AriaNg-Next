@@ -57,6 +57,36 @@ src/
 依赖方向是**单向**的：`core` 从不依赖 `ui`；两个 store 之间如果需要互相访问，走 `core/rpc/registry.ts`
 这个普通模块（存客户端实例），避免 Pinia store 互相 import 形成循环引用。
 
+### core 需要文案时怎么办？
+
+「任务状态该显示成什么」是业务规则，但它需要 i18n —— 而 i18n 属于表现层。
+
+解法是**把翻译函数当参数注入**：
+
+```ts
+// core/model/task.ts —— 不 import 任何 i18n
+export function taskStatusText(task: Task, t: (key: string) => string): string {
+  if (task.status === 'error') return t('status.error')
+  if (task.media) return t(mediaStateI18nKey(task.media.state))
+  return t(`status.${task.status}`)
+}
+
+// ui/components/TaskTable.vue —— 由 UI 层提供 t
+taskStatusText(task, t)
+```
+
+好处有三层：
+
+1. `core` 依然是零框架依赖的纯 TS，能直接单元测试
+   （测试里传一个假 `t` 即可，见 `tests/taskText.test.ts`）；
+2. 文案规则**只有一份**，表格 / 卡片 / 详情抽屉三处不会各说各话；
+3. 换语言不用碰 core。
+
+> 这个模式来自实测：媒体任务同时有 `task.status` 和 `task.media.state` 两个字段，
+> 三处界面各自决定「用哪个」，结果一个失败的任务在列表里显示「下载中」、
+> 在详情里又显示别的。规则一旦下沉到 core 并规定优先级，这类问题就消失了。
+> 详见 [VERIFICATION.md](./VERIFICATION.md) §5.2。
+
 ---
 
 ## 一次轮询的完整数据流

@@ -85,10 +85,44 @@ node tools/ff-verify.mjs http://localhost:5173/#/tasks shot.png --size 700x1000 
   [2] div.an-grid an-grid--2     top=247 h=96  与上一项间距=16px
 ```
 
-其它参数：`--eval "<表达式>"` 执行任意 JS、`--trace-ws` 追踪 WebSocket 生命周期。
+其它参数：
 
-> ⚠️ `--profile` 指向的临时目录**必须放在项目目录之外**，否则 Vite 的文件监听器会盯上
+| 参数 | 作用 |
+|---|---|
+| `--eval "<表达式>"` | 执行任意 JS 表达式，返回值打印到控制台 |
+| `--eval-file <脚本.js>` | 同上，但表达式写在文件里 |
+| `--trace-ws` | 追踪 WebSocket 生命周期（open / error / close） |
+| `--profile <目录>` | 复用固定的 Firefox profile，**多次运行之间保留 localStorage** |
+
+> ⚠️ **`--eval` 的表达式写在命令行里，转义会要命。**
+> 尤其在 PowerShell 里，`$` 开头会被当成变量插值
+> （`$pinia` 会被替换成空字符串），双引号里的 `\"` 也不是转义符。
+> 多步交互流程请一律用 `--eval-file`，把脚本写进文件就没有这些问题。
+>
+> `--profile` 指向的目录**必须放在项目目录之外**，否则 Vite 的文件监听器会盯上
 > `parent.lock` 并以 `EBUSY` 崩溃。
+
+### `tools/protocol-check.mjs` —— 验证后端到底支持哪些协议
+
+面板自己不实现下载协议，但「面板声称支持 BT / ED2K / HLS」这句话在真实后端上
+成立吗？这个脚本就是去回答这个问题：对一个真实的 aria2-next 实例，
+逐个协议下发任务、看核心认不认、数据拉不拉得下来。
+
+```bash
+node tools/protocol-check.mjs --url http://127.0.0.1:6801/jsonrpc --secret your-secret
+
+# 想连 BitTorrent 就带上本地种子文件
+node tools/protocol-check.mjs --url http://127.0.0.1:6801/jsonrpc --secret your-secret \
+     --torrent ./some.torrent
+```
+
+> ⚠️ **种子文件必须是真种子。**
+> 实测时踩过：某些镜像站的 `.torrent` 地址下载下来只有 0.3 KB，
+> 内容是错误页，核心会报 `Invalid torrent file: expected value ... in bencoded string` ——
+> 看起来像核心解析能力有问题，其实是文件本身就不是种子。
+> 先确认文件以 `d8:announce` 开头（合法 bencode）再测。
+
+完整结论见 [实测报告](./VERIFICATION.md)。
 
 ---
 
@@ -104,6 +138,13 @@ aria2-next 在保持 aria2 兼容的同时扩展了能力（ED2K、HLS/DASH、�
 
 结果会显示在「诊断」页面。**不支持的能力会被显式标灰，而不是静默消失** ——
 这是本项目「诚实的数据」原则的一部分。
+
+> ⚠️ **能力探测列表 ≠ 实际可用。**
+> 实测发现：aria2-next v3.1.0 的 `enabledFeatures` 里**有** `SFTP`，
+> 但 `aria2.addUri` 传 `sftp://` 会直接报 `Unsupported URI`。
+> 同一份列表里 FTP 则连名字都没有（已彻底移除）。
+> 所以「后端说自己支持」只能当参考，真正判定某个协议能不能用，
+> 还是得像 [实测报告](./VERIFICATION.md) 那样真的下个任务看结果。
 
 ---
 

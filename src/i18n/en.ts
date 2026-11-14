@@ -89,6 +89,15 @@ export const en: Record<string, string> = {
   'status.complete': 'Completed',
   'status.removed': 'Removed',
 
+  /* ---------- media task phases ---------- */
+  'media.downloading': 'Downloading',
+  'media.recording': 'Recording',
+  'media.metadata': 'Fetching metadata',
+  'media.complete': 'Completed',
+  'media.error': 'Error',
+  'media.stopped': 'Stopped',
+  'media.unknown': 'Unknown',
+
   /* ---------- tasks ---------- */
   'task.name': 'Name',
   'task.progress': 'Progress',
@@ -124,6 +133,10 @@ export const en: Record<string, string> = {
 
   /* ---------- dashboard ---------- */
   'dashboard.activeTasks': 'Active tasks',
+  'host.defaultName': 'Local aria2-next',
+  'chart.download': 'Download',
+  'chart.upload': 'Upload',
+  'dashboard.totalTasks': 'Total tasks',
   'dashboard.downloadSpeed': 'Total download',
   'dashboard.uploadSpeed': 'Total upload',
   'dashboard.anomalies': 'Anomalies',

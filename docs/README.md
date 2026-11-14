@@ -8,6 +8,7 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 架构说明：core / ui 分层、数据流、扩展方式 | 想改功能、加页面、加协议的人 |
 | [CUSTOM-CSS.md](./CUSTOM-CSS.md) | 自定义 CSS 指南与设计令牌体系 | 想改外观、写主题的人 |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | 开发环境、工具链、联调、FAQ | 想参与开发或排查问题的人 |
+| [VERIFICATION.md](./VERIFICATION.md) | **实测报告**：各协议真实下载能力、多主机管理、实测中发现的缺陷 | 想知道「到底哪些功能是真的能用」的人 |
 
 ## 其它资料
 

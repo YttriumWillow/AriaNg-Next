@@ -91,6 +91,21 @@ export const zhCN: Record<string, string> = {
   'status.complete': '已完成',
   'status.removed': '已移除',
 
+  /*
+   * 媒体任务的阶段。
+   *
+   * aria2-next 的 media 扩展对象用英文状态词（downloading / recording / ...），
+   * 直接显示会在中文界面里夹一串英文。这里把常见取值翻成中文，
+   * 没收录的原样显示（宁可显示英文原文，也不要显示一个错的翻译）。
+   */
+  'media.downloading': '下载中',
+  'media.recording': '录制中',
+  'media.metadata': '获取元数据',
+  'media.complete': '已完成',
+  'media.error': '出错',
+  'media.stopped': '已停止',
+  'media.unknown': '未知',
+
   /* ---------- 任务列表 ---------- */
   'task.name': '名称',
   'task.progress': '进度',
@@ -126,6 +141,10 @@ export const zhCN: Record<string, string> = {
 
   /* ---------- 仪表盘 ---------- */
   'dashboard.activeTasks': '活跃任务',
+  'host.defaultName': '本机 aria2-next',
+  'chart.download': '下载',
+  'chart.upload': '上传',
+  'dashboard.totalTasks': '全部任务',
   'dashboard.downloadSpeed': '总下载速度',
   'dashboard.uploadSpeed': '总上传速度',
   'dashboard.anomalies': '异常任务',

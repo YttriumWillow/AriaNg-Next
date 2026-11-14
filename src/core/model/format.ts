@@ -102,3 +102,37 @@ export function protocolLabel(protocol: string): string {
       return '未知'
   }
 }
+
+/**
+ * 媒体任务阶段词 → i18n 翻译键。
+ *
+ * aria2-next 的 media 扩展对象用英文状态词（downloading / recording / ...），
+ * 直接显示会在中文界面里夹一串英文。
+ *
+ * 这里只负责「英文状态词 → 翻译键」的映射，**具体翻译交给 UI 层的 t()**。
+ * 这样 core 层完全不需要依赖 i18n —— core 是零框架依赖的纯 TS，
+ * 翻译属于表现层的职责。
+ *
+ * 匹配用「包含」而不是「相等」：实际取值可能是 downloadingMetadata
+ * 这种带前缀的复合词，精确匹配会漏掉。
+ */
+const MEDIA_STATE_KEYS: Array<[RegExp, string]> = [
+  // ⚠️ 顺序有意义：downloadingMetadata 同时含 metadata 和 downloading，
+  // 所以 metadata 必须排在 download 前面，否则会翻译成「下载中」而不是「获取元数据」。
+  [/metadata/i, 'media.metadata'],
+  [/record/i, 'media.recording'],
+  [/download/i, 'media.downloading'],
+  [/complete/i, 'media.complete'],
+  [/error|fail/i, 'media.error'],
+  [/stop/i, 'media.stopped'],
+  [/pause/i, 'status.paused'],
+]
+
+/** 取媒体阶段的翻译键。未知状态一律回落到「未知」。 */
+export function mediaStateI18nKey(state: string): string {
+  if (!state) return 'media.unknown'
+  for (const [pattern, key] of MEDIA_STATE_KEYS) {
+    if (pattern.test(state)) return key
+  }
+  return 'media.unknown'
+}

@@ -13,12 +13,14 @@ import ProtocolBadge from '@/ui/components/ProtocolBadge.vue'
 import { useHostsStore } from '@/stores/hosts'
 import { useTasksStore } from '@/stores/tasks'
 import { useI18n } from '@/i18n'
+import { useHostName } from '@/ui/composables/useHostName'
 import { formatBytes, formatSpeed } from '@/core/model/format'
 import { protocolLabel } from '@/core/model/format'
 
 const hosts = useHostsStore()
 const tasks = useTasksStore()
 const { t } = useI18n()
+const { hostName } = useHostName()
 
 const state = computed(() => (hosts.activeHostId ? tasks.stateFor(hosts.activeHostId) : null))
 const connected = computed(() => hosts.activeRuntime?.status === 'connected')
@@ -39,6 +41,27 @@ const anomalyCount = computed(
 const protocolCounts = computed(() => {
   const counts = new Map<string, number>()
   for (const task of allTasks.value) {
+    counts.set(task.protocol, (counts.get(task.protocol) ?? 0) + 1)
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])
+})
+
+/**
+ * **活跃任务**的协议分布。
+ *
+ * ⚠️ 这里必须和上面的 protocolCounts 分开。
+ *
+ * protocolCounts 统计的是**全部**任务（下载中 + 等待中 + 已完成 + 出错），
+ * 而它原本被放在「活跃任务 N」卡片的副行里 ——
+ * 主数字写着 2，副行却列着 BT 4 · HTTP 3 · ED2K 1（那是全部 11 个任务的分布）。
+ * 两个数字口径不一致，用户会以为「活跃任务里有 4 个 BT」，越看越糊涂。
+ *
+ * 卡片副行必须和主数字**同一个口径**：这里就只数活跃任务。
+ * 全部任务的协议分布由下方「协议分布」卡片单独呈现，不重复。
+ */
+const activeProtocolCounts = computed(() => {
+  const counts = new Map<string, number>()
+  for (const task of state.value?.active ?? []) {
     counts.set(task.protocol, (counts.get(task.protocol) ?? 0) + 1)
   }
   return [...counts.entries()].sort((a, b) => b[1] - a[1])
@@ -73,7 +96,7 @@ const recentCompleted = computed(() =>
     <div class="an-page__head">
       <div>
         <h1 class="an-page__title">{{ t('nav.dashboard') }}</h1>
-        <p class="an-page__desc">{{ hosts.activeHost?.name ?? '—' }}</p>
+        <p class="an-page__desc">{{ hostName(hosts.activeHost) }}</p>
       </div>
     </div>
 
@@ -90,7 +113,9 @@ const recentCompleted = computed(() =>
         <StatCard
           :label="t('dashboard.activeTasks')"
           :value="String(state?.active.length ?? 0)"
-          :meta="protocolCounts.slice(0, 3).map(([p, n]) => `${protocolLabel(p)} ${n}`).join(' · ')"
+          :meta="activeProtocolCounts.length
+            ? activeProtocolCounts.map(([p, n]) => `${protocolLabel(p)} ${n}`).join(' · ')
+            : `${t('dashboard.totalTasks')} ${allTasks.length}`"
         />
         <StatCard
           :label="t('dashboard.downloadSpeed')"

@@ -48,9 +48,14 @@ AriaNg-Next 保留 AriaNg 全部核心操作路径（多主机、任务分组、
 | 能力 | 说明 |
 |---|---|
 | **能力探测** | 启动时问后端到底支持什么，不支持的能力**显式标灰**而不是静默消失 |
-| **多协议** | HTTP/HTTPS/SFTP/Metalink/BitTorrent/**ED2K**/**HLS**/**DASH** |
+| **多协议** | HTTP / HTTPS / BitTorrent（种子 + 磁力）/ **ED2K** / Metalink / **HLS** / **DASH** |
 | **媒体任务** | 按呈现时长计算进度、清晰度轨道、直播录制状态 |
 | **诊断面板** | 磁盘队列、协议开销、tracker 状态、性能警告 |
+
+> 上面每种协议都在**真实的 aria2-next 实例**上跑过完整下载，结论与限制见
+> [实测报告](docs/VERIFICATION.md)。
+> 顺带一提：SFTP 虽然出现在 aria2-next 的 `enabledFeatures` 里，
+> 但实测 `addUri` 会直接拒绝 `sftp://` URI —— **能力探测列表不等于实际可用**。
 
 ### 自定义外观（核心特性）
 

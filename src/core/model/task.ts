@@ -20,6 +20,7 @@ import type {
   RawMediaInfo,
   TaskStatusName,
 } from '../rpc/types'
+import { formatPercent, mediaStateI18nKey } from './format'
 
 /** 面板支持的任务类型。 */
 export type TaskProtocol = 'http' | 'bittorrent' | 'ed2k' | 'hls' | 'dash' | 'metalink' | 'sftp' | 'unknown'
@@ -241,12 +242,82 @@ export function computeEta(raw: Aria2TaskStatus, remainingLength: number, downlo
 export function resolveName(raw: Aria2TaskStatus): string {
   if (raw.name?.trim()) return raw.name
   if (raw.ed2k?.name) return raw.ed2k.name
+
+  /*
+   * 文件路径兜底。
+   *
+   * ⚠️ path 可能是**空字符串** —— 任务在服务端还没创建出文件时就失败了
+   * （比如 HTTP 直接返回 403）。所以这里必须用 trim() 判断，
+   * 光判断真值会被空字符串骗过去。
+   */
   const firstFile = raw.files?.[0]?.path
-  if (firstFile) {
+  if (firstFile?.trim()) {
     const parts = firstFile.split(/[\\/]/)
-    return parts[parts.length - 1] || firstFile
+    const base = parts[parts.length - 1]
+    if (base) return base
   }
+
+  /*
+   * URI 兜底。
+   *
+   * 走不通的文件名还有一条路：源地址本身。
+   * 比如「https://mirrors.aliyun.com/ubuntu/ls-lR.gz」，
+   * 取最后一段就是 ls-lR.gz —— 比直接甩一串 GID 给用户友好得多。
+   *
+   * 这一步实测很有必要：403 失败的任务 files[0].path 是空的，
+   * 界面上原本只能显示 48580a09170a1fa4 这种完全无法辨认的字符串。
+   */
+  const uri = raw.files?.[0]?.uris?.[0]?.uri
+  if (uri) {
+    const fromUri = nameFromUri(uri)
+    if (fromUri) return fromUri
+  }
+
   return raw.gid
+}
+
+/**
+ * 从 URI 里猜一个可读的名称。
+ *
+ * 三种 URI 各有各的脾气：
+ *  - 普通 http(s)：取路径最后一段，丢掉查询串和锚点
+ *  - ed2k://|file|名字|大小|哈希|/：名字在第 3 段
+ *  - magnet:?xt=...&dn=名字：名字在 dn 参数里
+ */
+function nameFromUri(uri: string): string {
+  // ed2k 链接：|file|<名称>|<大小>|<哈希>|
+  if (uri.startsWith('ed2k://')) {
+    const match = /\|file\|([^|]*)\|/.exec(uri)
+    if (match?.[1]) return match[1]
+    return ''
+  }
+
+  // magnet 链接：dn 参数就是显示名
+  if (uri.startsWith('magnet:')) {
+    const match = /[?&]dn=([^&]+)/.exec(uri)
+    if (match?.[1]) return safeDecode(match[1])
+    return ''
+  }
+
+  // 普通链接：去掉 ?query 和 #anchor，再取最后一段
+  const cleaned = uri.split(/[?#]/)[0]
+  const parts = cleaned.split(/[\\/]/)
+  const base = parts[parts.length - 1]
+  return base ? safeDecode(base) : ''
+}
+
+/**
+ * URL 解码，但要能容错。
+ *
+ * decodeURIComponent 遇到残缺的百分号序列（比如 %zz）会抛 URIError。
+ * 一个名字解码失败不该让整个任务列表崩掉，所以这里兜住异常。
+ */
+function safeDecode(text: string): string {
+  try {
+    return decodeURIComponent(text)
+  } catch {
+    return text
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -298,4 +369,41 @@ export function normalizeTask(raw: Aria2TaskStatus): Task {
 /** 批量规整。 */
 export function normalizeTasks(raws: Aria2TaskStatus[]): Task[] {
   return raws.map(normalizeTask)
+}
+
+/**
+ * 任务的状态文案。
+ *
+ * ⚠️ 媒体任务有自己的阶段体系（media.state），但**不能盖过任务本身的错误状态**。
+ *
+ * 实测踩过的坑：DASH 直播流因为「服务端已超出保留窗口」失败，
+ * aria2 报的是 status=error，而 media.state 依然是 downloading。
+ * 如果这里无条件优先用 media.state，界面就会显示「下载中」——
+ * 一个正在下载的假象，用户会一直等一个永远下不完的任务。
+ *
+ * 所以错误状态必须**优先于**媒体阶段。
+ *
+ * @param t 翻译函数，由调用方（UI 层）注入。
+ *          core 层刻意不直接依赖 i18n —— 它是零框架依赖的纯 TS，
+ *          翻译属于表现层的事。
+ */
+export function taskStatusText(task: Task, t: (key: string) => string): string {
+  if (task.status === 'error') return t('status.error')
+  if (task.media) return t(mediaStateI18nKey(task.media.state))
+  return t(`status.${task.status}`)
+}
+
+/**
+ * 进度列的文案。
+ *
+ * 出错的任务显示「出错」而不是百分比或「下载中」——
+ * 一个 0% 的进度条配一句「下载中」，用户会一直等下去。
+ */
+export function taskProgressText(task: Task, t: (key: string) => string): string {
+  if (task.status === 'error') return t('status.error')
+  if (task.media) {
+    if (task.media.live) return t('status.active')
+    return formatPercent(task.media.progress)
+  }
+  return formatPercent(task.progress)
 }

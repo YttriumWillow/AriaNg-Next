@@ -10,7 +10,9 @@ import AppIcon from '@/ui/components/AppIcon.vue'
 import ProgressBar from '@/ui/components/ProgressBar.vue'
 import ProtocolBadge from '@/ui/components/ProtocolBadge.vue'
 import type { Task } from '@/core/model/task'
-import { formatBytes, formatEta, formatPercent, formatSpeed } from '@/core/model/format'
+// 进度文案的规则在 core 里（错误状态优先），这里只注入翻译函数
+import { taskProgressText } from '@/core/model/task'
+import { formatBytes, formatEta, formatSpeed } from '@/core/model/format'
 import { useI18n } from '@/i18n'
 
 defineProps<{
@@ -45,7 +47,7 @@ function progressVariant(task: Task): 'default' | 'seeding' | 'paused' | 'error'
       <div>
         <ProgressBar :progress="task.media?.live ? 0 : task.progress" :variant="progressVariant(task)" />
         <div class="an-task-name__path" style="margin-top: 5px">
-          {{ task.media?.live ? t('status.active') : formatPercent(task.progress) }}
+          {{ taskProgressText(task, t) }}
           <span v-if="task.totalLength > 0"> · {{ formatBytes(task.completedLength) }} / {{ formatBytes(task.totalLength) }}</span>
         </div>
       </div>

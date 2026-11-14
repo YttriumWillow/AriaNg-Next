@@ -60,6 +60,7 @@ document.querySelector('.an-card').style.background = 'red'
 | `computeProgress` | **媒体任务的 `totalLength` 恒为 0**，进度必须读 `media.progress` |
 | `computeEta` | 什么时候该返回 `null`（未知）而不是编一个数字 |
 | `normalizeTask` | 一个函数把原始 JSON 变成界面能直接用的结构 |
+| `taskStatusText` | **翻译函数作为参数注入** —— core 不认识 i18n，却能算出该显示什么文案 |
 
 **自测**：`computeEta` 里为什么「速度为 0 时返回 null」比「返回一个大数字」好？
 
@@ -81,7 +82,8 @@ document.querySelector('.an-card').style.background = 'red'
 | `hosts.ts` | 多主机：每个主机一份独立状态 |
 | `appearance.ts` | 主题、令牌、自定义 CSS 三者怎么协同 |
 
-**重点看** `hosts.ts` 里 `runtimeFor()` 的注释 —— 那里藏着一个**极难发现的 Vue 响应式陷阱**（见下文「两个坑」）。
+**重点看** `hosts.ts` 里 `runtimeFor()` 的注释 —— 那里藏着一个**极难发现的 Vue 响应式陷阱**（见下文「坑 ②」）。
+同一文件里的 `generateHostId()` 则藏着另一个经典陷阱（见「坑 ③」）。
 
 ### 5️⃣ 组件层 → `src/ui/`
 
@@ -130,9 +132,9 @@ document.querySelector('.an-card').style.background = 'red'
 
 ---
 
-## 两个值得记住的坑
+## 四个值得记住的坑
 
-这两个坑都极难靠肉眼发现，是本项目踩过并留下了回归测试的。
+这四个坑都极难靠肉眼发现，是本项目真实踩过、并留下了回归测试的。
 
 ### 坑 ① `<button>` 的默认 `text-align: center` 会被子元素继承
 
@@ -170,6 +172,69 @@ Vue 收不到更新通知 —— 界面永远停在旧状态。
 > 这个坑有竞态性质：只有"连接完成"恰好早于"首屏渲染"时才碰巧正常，
 > 所以极难复现。回归测试见 `tests/storeReactivity.test.ts`。
 
+### 坑 ③ `Date.now()` 当唯一 ID，会在同一毫秒内撞车
+
+```ts
+const host = { ...config, id: `host-${Date.now().toString(36)}` }
+```
+
+`Date.now()` 的精度是**毫秒**。用户照着配置文档连着添加两台主机时，
+两次点击完全可能落在同一毫秒里 —— 于是两台主机的 id **完全相同**。
+
+**为什么后果很隐蔽**：数组里确实有两条记录，侧栏也确实渲染出两个状态点，
+但所有按 id 查找的操作（`selectHost` / `updateHost` / `removeHost`）
+都只会命中**第一条**。第二台于是变成一个「连接正常、状态点绿着、
+但你永远切不过去」的幽灵主机。
+
+**修法**：时间戳 + 随机后缀，再加一次冲突检测；
+同时在**加载时**给历史数据去重（否则已经中招的用户升级后还是坏的）。
+
+> 通用教训：**时间戳不是唯一 ID**。任何用「当前时间」当标识符的地方，
+> 都要额外处理同毫秒碰撞 —— 尤其是当用户可能**批量**创建多个对象时。
+> 回归测试见 `tests/hosts.test.ts`。
+
+### 坑 ④ 两个状态字段同时存在时，谁的优先级更高？
+
+```ts
+// 错误示范
+if (task.media) return task.media.state      // 媒体阶段
+return t(`status.${task.status}`)             // 任务状态
+```
+
+一个 DASH 直播流因为「服务端超出保留窗口」失败了：
+`task.status` 是 `error`，但 `task.media.state` 依然是 `downloading`。
+上面这段代码会显示「下载中」—— 一个正在下载的假象，
+用户会一直等一个永远下不完的任务。
+
+**修法**：**错误状态优先于**任何「更细分的阶段信息**。
+
+```
+最终状态判断：error > 媒体阶段 > 通用状态
+```
+
+这个顺序在 `core/model/task.ts` 的 `taskStatusText` 里，
+表格、卡片、详情抽屉三处共用同一份实现。
+
+> 通用教训：当一个对象上存在**多个描述同一件事**的字段时，
+> 必须明确规定优先级，否则每个界面都会做出**不同的**选择，
+> 而用户会觉得「有的地方说有错，有的地方说在下载」。
+
+---
+
+## 实测是最好的教材
+
+上面四个坑都不是靠读代码发现的，是在**真实 Firefox + 真实 aria2-next 实例**上
+连着三台主机、跑各种协议任务时暴露出来的。
+
+完整的实测过程、协议支持矩阵、以及每个坑的「症状 → 根因 → 修法 → 回归测试」
+四段式拆解，见 [VERIFICATION.md](./VERIFICATION.md)。
+
+自己动手跑一遍收获更大：
+
+```bash
+node tools/protocol-check.mjs --url http://127.0.0.1:6801/jsonrpc --secret your-secret
+```
+
 ---
 
 ## 学习卡点速查
@@ -189,3 +254,4 @@ Vue 收不到更新通知 —— 界面永远停在旧状态。
 - [ARCHITECTURE.md](./ARCHITECTURE.md) —— 分层设计与扩展方式
 - [CUSTOM-CSS.md](./CUSTOM-CSS.md) —— 自定义 CSS 与设计令牌
 - [DEVELOPMENT.md](./DEVELOPMENT.md) —— 开发环境与工具链
+- [VERIFICATION.md](./VERIFICATION.md) —— 实测报告：协议能力、多主机管理、实测中发现的缺陷

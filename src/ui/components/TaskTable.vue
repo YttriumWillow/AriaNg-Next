@@ -10,8 +10,10 @@ import AppIcon from '@/ui/components/AppIcon.vue'
 import ProgressBar from '@/ui/components/ProgressBar.vue'
 import ProtocolBadge from '@/ui/components/ProtocolBadge.vue'
 import type { Task } from '@/core/model/task'
+// 状态文案逻辑放在 core，这里只负责把翻译函数 t() 注入进去
+import { taskProgressText, taskStatusText } from '@/core/model/task'
 import type { TaskSortKey } from '@/core/model/sort'
-import { formatBytes, formatEta, formatPercent, formatSpeed } from '@/core/model/format'
+import { formatBytes, formatEta, formatSpeed } from '@/core/model/format'
 import { useI18n } from '@/i18n'
 
 defineProps<{
@@ -67,22 +69,19 @@ function statusClass(task: Task): string {
   }
 }
 
-/** 状态文字。 */
+/**
+ * 状态文字。
+ *
+ * 具体规则在 core 的 taskStatusText 里（错误状态优先于媒体阶段），
+ * 这里只做翻译函数的注入。
+ */
 function statusText(task: Task): string {
-  if (task.media) {
-    // 媒体任务有自己的阶段体系，优先用它
-    return task.media.state
-  }
-  return t(`status.${task.status}`)
+  return taskStatusText(task, t)
 }
 
-/** 进度文案：媒体任务按呈现时长显示，其余按百分比。 */
+/** 进度文案。规则同样在 core 的 taskProgressText 里。 */
 function progressText(task: Task): string {
-  if (task.media) {
-    if (task.media.live) return t('status.active')
-    return formatPercent(task.media.progress)
-  }
-  return formatPercent(task.progress)
+  return taskProgressText(task, t)
 }
 
 /** 是否显示暂停按钮（下载中/等待中可暂停）。 */

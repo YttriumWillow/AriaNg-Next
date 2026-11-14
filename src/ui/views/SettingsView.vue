@@ -12,6 +12,7 @@ import AppIcon from '@/ui/components/AppIcon.vue'
 import { useHostsStore, type HostConfig } from '@/stores/hosts'
 import { useToastStore } from '@/stores/toast'
 import { useI18n, LOCALES, setLocale, type Locale } from '@/i18n'
+import { useHostName } from '@/ui/composables/useHostName'
 import { getClient } from '@/core/rpc/registry'
 import type { Aria2Options } from '@/core/rpc/types'
 
@@ -20,6 +21,7 @@ type TabKey = 'hosts' | 'options' | 'language'
 const hosts = useHostsStore()
 const toast = useToastStore()
 const { t, locale } = useI18n()
+const { hostName } = useHostName()
 
 const tab = ref<TabKey>('hosts')
 
@@ -164,7 +166,7 @@ onMounted(() => {
             'an-status-dot--error': hosts.runtimeFor(host.id).status === 'error',
           }" />
           <div style="flex: 1; min-width: 160px">
-            <div style="font-weight: 600; font-size: 14px">{{ host.name }}</div>
+            <div style="font-weight: 600; font-size: 14px">{{ hostName(host) }}</div>
             <div class="an-task-name__path">{{ host.url }}</div>
             <div v-if="hosts.runtimeFor(host.id).error" style="font-size: 11.5px; color: var(--an-danger)">
               {{ hosts.runtimeFor(host.id).error }}
