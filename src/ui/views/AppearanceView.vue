@@ -208,10 +208,9 @@ function resetCss(): void {
                   @input="onColorChange(token.name, $event)"
                 />
               </span>
-              <span v-else style="display: flex; align-items: center; gap: 8px">
+              <span v-else class="an-token-row__control">
                 <input
                   class="an-input"
-                  style="height: 26px; min-height: 26px"
                   :value="tokenValue(token.name, token.defaultValue)"
                   @change="onTokenChange(token.name, $event)"
                 />

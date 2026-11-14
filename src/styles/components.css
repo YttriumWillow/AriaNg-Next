@@ -1455,26 +1455,54 @@
    * 16. 令牌编辑
    * ================================================================ */
 
+  /*
+   * 令牌行：标签 | 控件 | 变量名
+   *
+   * ⚠️ 中间这列必须留够宽度。
+   * 颜色令牌放的是色块（26px 就够），长度令牌放的是输入框 ——
+   * 如果这一列按色块宽度给（40px），输入框就会窄到显示不全
+   * （"420px" 会被截成 "42C"）。
+   * 所以这里给一个对两者都够用的固定宽度，色块再靠左对齐。
+   */
   .an-token-row {
     display: grid;
-    grid-template-columns: 96px 40px 1fr;
-    gap: var(--an-space-2);
+    grid-template-columns: 92px 148px minmax(0, 1fr);
+    gap: var(--an-space-3);
     align-items: center;
+  }
+
+  .an-token-row__control {
+    display: flex;
+    align-items: center;
+    gap: var(--an-space-2);
+    min-width: 0;
+  }
+
+  /* 输入框撑满控件列，重置按钮保持固定宽度 */
+  .an-token-row__control .an-input {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    height: 30px;
+    min-height: 30px;
   }
 
   .an-token-row__label {
     font-size: var(--an-text-xs);
     color: var(--an-text-muted);
+    overflow-wrap: anywhere;
   }
 
   .an-token-row__swatch {
     width: 26px;
     height: 26px;
+    flex: 0 0 26px;
     border-radius: var(--an-radius-sm);
     border: 1px solid var(--an-border-strong);
     padding: 0;
     overflow: hidden;
     cursor: pointer;
+    justify-self: start;
   }
 
   .an-token-row__swatch input {
@@ -1490,6 +1518,8 @@
     font-family: var(--an-font-mono);
     font-size: 10.5px;
     color: var(--an-text-faint);
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   /* ================================================================
