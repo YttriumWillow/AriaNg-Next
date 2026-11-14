@@ -40,37 +40,119 @@
     border-right: 1px solid var(--an-border);
   }
 
-  .an-sidebar__brand {
+  /*
+   * 品牌块：侧栏左上角的渐变主题色控件。
+   *
+   * 它承载三件事：产品名、aria2-next 核心的连接状态、版本号。
+   * 把它们从顶栏挪到这里，是因为「我是谁 / 连上了吗」属于**身份信息**，
+   * 而顶栏应该留给「我现在能做什么」这类**全局操作**。
+   */
+  .an-brand {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--an-space-4);
+    padding: var(--an-space-4);
+    border-radius: var(--an-radius-lg);
+    background: var(--an-brand-bg);
+    color: var(--an-brand-ink);
+    overflow: hidden;
+    box-shadow: var(--an-shadow-1);
+    /* 给一个明确的高度，让它成为侧栏里一个有分量的「品牌块」 */
+    min-height: 140px;
+  }
+
+  /* 顶部一层白色高光 —— 让渐变有陶瓷/玻璃的质感，而不是一块死板的色块 */
+  .an-brand::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 62%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent);
+    pointer-events: none;
+  }
+
+  /* 图标栏（窄屏）模式下只显示这个字母标记 */
+  .an-brand__mark {
+    display: none;
+    font-weight: 700;
+    font-size: var(--an-text-lg);
+  }
+
+  .an-brand__name {
+    position: relative;
+    font-size: var(--an-text-lg);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .an-brand__meta {
+    position: relative;
     display: flex;
     align-items: center;
     gap: var(--an-space-2);
-    padding: var(--an-space-1) var(--an-space-2) var(--an-space-3);
+    min-width: 0;
   }
 
-  .an-sidebar__logo {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: var(--an-accent-fill);
-    color: var(--an-accent-contrast);
-    display: grid;
-    place-items: center;
-    font-weight: 700;
-    font-size: var(--an-text-sm);
-    flex: 0 0 28px;
-  }
-
-  .an-sidebar__title {
-    font-size: var(--an-text-md);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+  /* 状态胶囊：半透明底 + 状态色文字 */
+  .an-brand__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: var(--an-radius-pill);
+    background: var(--an-brand-pill-bg);
+    color: var(--an-brand-ink-muted);
+    font-size: var(--an-text-xs);
+    font-weight: 500;
     white-space: nowrap;
   }
 
-  .an-sidebar__version {
-    /* 副标题 / 版本号：这是给人看的文字，不该用等宽 */
-    font-size: 10.5px;
-    color: var(--an-text-faint);
+  .an-brand__pill--online {
+    color: var(--an-success);
+  }
+
+  .an-brand__pill--connecting {
+    color: var(--an-warning);
+  }
+
+  .an-brand__pill--offline {
+    color: var(--an-danger);
+  }
+
+  .an-brand__version {
+    font-size: var(--an-text-xs);
+    color: var(--an-brand-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * 侧栏底部：全局速率。
+   * 放在左下角是因为它属于「持续存在但不打断操作」的信息，
+   * 放在顶栏会和主操作抢注意力。
+   */
+  .an-sidebar__footer {
+    /* flex 列布局里用 margin-top:auto 把它推到最底部 */
+    margin-top: auto;
+    padding-top: var(--an-space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--an-space-4);
+    font-size: var(--an-text-xs);
+    color: var(--an-text-muted);
+  }
+
+  .an-sidebar__speed {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .an-sidebar__speed .an-table__num {
     font-variant-numeric: tabular-nums;
   }
 
@@ -880,39 +962,6 @@
     color: var(--an-text-faint);
   }
 
-  /* 连接状态胶囊 */
-  .an-conn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 24px;
-    padding: 0 10px;
-    border-radius: var(--an-radius-pill);
-    font-size: var(--an-text-xs);
-    border: 1px solid var(--an-border);
-    background: var(--an-surface-2);
-    color: var(--an-text-muted);
-    white-space: nowrap;
-  }
-
-  .an-conn--online {
-    background: var(--an-success-soft);
-    border-color: transparent;
-    color: var(--an-success);
-  }
-
-  .an-conn--connecting {
-    background: var(--an-warning-soft);
-    border-color: transparent;
-    color: var(--an-warning);
-  }
-
-  .an-conn--offline {
-    background: var(--an-danger-soft);
-    border-color: transparent;
-    color: var(--an-danger);
-  }
-
   /* ================================================================
    * 8. 进度条
    * ================================================================ */
@@ -1636,12 +1685,42 @@
       align-items: center;
     }
 
-    .an-sidebar__brand {
-      padding: var(--an-space-1) 0 var(--an-space-2);
+    /*
+     * 品牌块在图标栏里放不下完整内容，
+     * 缩成一个只显示字母标记的方块（渐变和身份感保留）。
+     */
+    .an-brand {
+      width: 40px;
+      height: 40px;
+      /* ⚠️ 必须同时覆盖 min-height：min-height 优先级高于 height，
+         只写 height: 40px 的话块还是会保持 140px 高 */
+      min-height: 40px;
+      padding: 0;
+      gap: 0;
+      justify-content: center;
+      align-items: center;
+      border-radius: var(--an-radius-md);
     }
 
-    .an-sidebar__title,
-    .an-sidebar__version,
+    .an-brand::before {
+      height: 100%;
+    }
+
+    .an-brand__mark {
+      display: block;
+      position: relative;
+    }
+
+    .an-brand__name,
+    .an-brand__meta {
+      display: none;
+    }
+
+    /* 速度在图标栏里没有意义（只有两个数字），直接隐藏 */
+    .an-sidebar__footer {
+      display: none;
+    }
+
     .an-sidebar__section-title,
     .an-nav-item__label,
     .an-nav-item__count,
@@ -1732,8 +1811,10 @@
       z-index: 30;
     }
 
-    .an-sidebar__brand,
+    /* 手机端侧栏变成了底部标签栏，品牌块和速率都放不下，直接隐藏 */
+    .an-brand,
     .an-sidebar__section-title,
+    .an-sidebar__footer,
     .an-host-list {
       display: none;
     }

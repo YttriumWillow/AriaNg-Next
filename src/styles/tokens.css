@@ -109,6 +109,16 @@
      */
     --an-switch-on: #157a54;
 
+    /*
+     * 品牌块（侧栏左上角）的渐变与文字色。
+     * 单独拆一组令牌，是为了让同一块 UI 在三套主题下各自协调：
+     * 亮色用浅粉渐变 + 深墨字；暗色用深玫瑰渐变 + 浅色字。
+     */
+    --an-brand-bg: linear-gradient(145deg, #f9d5de 0%, var(--an-accent-fill) 46%, #e290a7 100%);
+    --an-brand-ink: #2a1219;
+    --an-brand-ink-muted: rgba(42, 18, 25, 0.62);
+    --an-brand-pill-bg: rgba(255, 255, 255, 0.72);
+
     /* ---------- 阴影（带品牌色，借鉴 MiniMax 的紫调阴影手法） ---------- */
     --an-shadow-1: 0 1px 2px rgba(92, 26, 48, 0.06);
     --an-shadow-2: 0 6px 20px -6px rgba(92, 26, 48, 0.16);
@@ -162,6 +172,12 @@
 
     --an-switch-on: #4cb47c;
 
+    /* 暗色主题下品牌块用深玫瑰渐变，避免在近黑底上出现一块刺眼的大粉色 */
+    --an-brand-bg: linear-gradient(145deg, #4d333c 0%, #35242c 48%, #221920 100%);
+    --an-brand-ink: #f2eaec;
+    --an-brand-ink-muted: rgba(242, 234, 236, 0.62);
+    --an-brand-pill-bg: rgba(255, 255, 255, 0.1);
+
     --an-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
     --an-shadow-2: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
     --an-shadow-3: 0 18px 48px -12px rgba(0, 0, 0, 0.7);
@@ -194,6 +210,12 @@
     --an-info: #2f5f8f;
 
     --an-switch-on: #1f7a4c;
+
+    /* 毛玻璃主题：品牌块本身也做成一块磨砂玻璃 */
+    --an-brand-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(242, 172, 186, 0.52));
+    --an-brand-ink: #1b1517;
+    --an-brand-ink-muted: rgba(27, 21, 23, 0.62);
+    --an-brand-pill-bg: rgba(255, 255, 255, 0.6);
 
     --an-shadow-1: 0 1px 2px rgba(40, 12, 22, 0.08);
     --an-shadow-2: 0 6px 20px -6px rgba(40, 12, 22, 0.22);

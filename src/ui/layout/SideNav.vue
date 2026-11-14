@@ -2,10 +2,17 @@
 /**
  * 侧边导航。
  *
- * 侧栏只放「上下文」三类东西：
- *  1. 主机（连接对象）—— AriaNg 里放在设置里，这里提到一级
- *  2. 任务状态分段 —— 带实时计数
- *  3. 工具入口
+ * 侧栏从上到下承担四个角色：
+ *  1. 品牌块 —— 产品名 + aria2-next 核心的连接状态 + 版本号（身份信息）
+ *  2. 主机 —— 连接对象。AriaNg 里放在设置里，这里提到一级
+ *  3. 任务状态分段 —— 带实时计数
+ *  4. 工具入口
+ *
+ * 底部另有一行全局速率。
+ *
+ * 为什么把连接状态和版本号放进品牌块，而不是留在顶栏？
+ * 因为「我是谁 / 连上了吗」是**身份信息**，而顶栏应该留给
+ * 「我现在能做什么」这类**全局操作**。两者分开，界面层级才清晰。
  */
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -13,12 +20,44 @@ import AppIcon from '@/ui/components/AppIcon.vue'
 import { useHostsStore } from '@/stores/hosts'
 import { useTasksStore } from '@/stores/tasks'
 import { useI18n } from '@/i18n'
+import { formatSpeed } from '@/core/model/format'
 
 const route = useRoute()
 const router = useRouter()
 const hosts = useHostsStore()
 const tasks = useTasksStore()
 const { t } = useI18n()
+
+const runtime = computed(() => (hosts.activeHostId ? hosts.runtimeFor(hosts.activeHostId) : null))
+
+/** aria2-next 核心的连接状态。 */
+const connection = computed(() => {
+  const status = runtime.value?.status ?? 'idle'
+  switch (status) {
+    case 'connected':
+      return { class: 'an-brand__pill--online', icon: 'activity', text: t('connection.connected') }
+    case 'connecting':
+      return { class: 'an-brand__pill--connecting', icon: 'refresh', text: t('connection.connecting') }
+    case 'reconnecting':
+      return { class: 'an-brand__pill--connecting', icon: 'refresh', text: t('connection.reconnecting') }
+    case 'error':
+      return { class: 'an-brand__pill--offline', icon: 'offline', text: t('connection.error') }
+    default:
+      return { class: '', icon: 'offline', text: t('connection.disconnected') }
+  }
+})
+
+/** 后端核心版本号。 */
+const version = computed(() => runtime.value?.capabilities?.version ?? '')
+
+/** 全局速率，显示在侧栏底部。 */
+const speeds = computed(() => {
+  const state = hosts.activeHostId ? tasks.stateFor(hosts.activeHostId) : null
+  return {
+    down: state?.globalStat.downloadSpeed ?? 0,
+    up: state?.globalStat.uploadSpeed ?? 0,
+  }
+})
 
 /** 当前主机的任务状态计数。 */
 const counts = computed(() => {
@@ -59,11 +98,16 @@ function statusClass(hostId: string): string {
 
 <template>
   <aside class="an-sidebar">
-    <div class="an-sidebar__brand">
-      <div class="an-sidebar__logo">A</div>
-      <div style="min-width: 0">
-        <div class="an-sidebar__title">{{ t('app.title') }}</div>
-        <div class="an-sidebar__version">{{ t('app.tagline') }}</div>
+    <!-- 品牌块：产品名 + 核心连接状态 + 版本号 -->
+    <div class="an-brand">
+      <span class="an-brand__mark">A</span>
+      <div class="an-brand__name">{{ t('app.title') }}</div>
+      <div class="an-brand__meta">
+        <span class="an-brand__pill" :class="connection.class">
+          <AppIcon :name="connection.icon" :size="12" />
+          {{ connection.text }}
+        </span>
+        <span v-if="version" class="an-brand__version">v{{ version }}</span>
       </div>
     </div>
 
@@ -117,6 +161,18 @@ function statusClass(hostId: string): string {
         <AppIcon class="an-nav-item__icon" name="sliders" />
         <span class="an-nav-item__label">{{ t('nav.settings') }}</span>
       </RouterLink>
+    </div>
+
+    <!-- 底部：全局速率 -->
+    <div class="an-sidebar__footer">
+      <span class="an-sidebar__speed">
+        <AppIcon name="download" :size="13" style="color: var(--an-accent)" />
+        <span class="an-table__num">{{ formatSpeed(speeds.down) }}</span>
+      </span>
+      <span class="an-sidebar__speed">
+        <AppIcon name="activity" :size="13" style="color: var(--an-text-faint)" />
+        <span class="an-table__num">{{ formatSpeed(speeds.up) }}</span>
+      </span>
     </div>
   </aside>
 </template>
