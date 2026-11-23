@@ -10,7 +10,7 @@
  *  6. 媒体非直播 ETA、省略 remainingLength 兜底与 URL API 多参数往返
  */
 import { createRequire } from 'node:module'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { createTransport, WsRpcTransport } from '@/core/rpc/transport'
 import { TransportError } from '@/core/rpc/errors'
@@ -37,8 +37,9 @@ interface MockWsServer {
 }
 
 const require = createRequire(import.meta.url)
-const { WebSocketServer } = require('ws') as {
+const { WebSocketServer, WebSocket: WsClient } = require('ws') as {
   WebSocketServer: new (opts: { port: number }) => MockWsServer
+  WebSocket: typeof globalThis.WebSocket
 }
 
 const servers: MockWsServer[] = []
@@ -51,6 +52,11 @@ async function startWsServer(): Promise<{ port: number; wss: MockWsServer }> {
   const port = typeof addr === 'object' && addr ? addr.port : 0
   return { port, wss }
 }
+
+beforeEach(() => {
+  // Node 20（CI 默认环境）没有全局 WebSocket，统一用 devDependencies 的 ws 保持跨版本一致
+  vi.stubGlobal('WebSocket', WsClient)
+})
 
 afterEach(async () => {
   vi.useRealTimers()
