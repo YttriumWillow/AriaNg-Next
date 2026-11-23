@@ -179,11 +179,16 @@ hosts.ts  startPolling()
 | 测试文件 | 覆盖什么 |
 |---|---|
 | `tests/task.test.ts` | 规整层：类型转换、协议识别、进度与 ETA 的边界情况 |
+| `tests/taskText.test.ts` | 任务状态/进度文案优先级与 URI 兜底名 |
 | `tests/rpc.test.ts` | JSON-RPC 请求体格式、secret 注入位置、错误分类 |
+| `tests/errors.test.ts` | 鉴权错误识别与可操作错误文案 |
 | `tests/cssEngine.test.ts` | 层叠层包装、作用域降级、CSS 校验 |
+| `tests/cssContract.test.ts` | BEM 修饰类挂载契约与组件层禁 `!important` 检查 |
 | `tests/storeReactivity.test.ts` | 响应式回归（防止"坑②"复发） |
 | `tests/appearance.test.ts` | 主题切换（防止"跟随系统吞掉用户选择"复发） |
+| `tests/hosts.test.ts` | 多主机 ID 去重与并发添加唯一性 |
 | `tests/format.test.ts` | 单位换算与空值处理 |
+| `tests/reliability.test.ts` | 传输层断线/超时、Poller 防泄漏、存储容错与 CSS 防注入回归 |
 
 ```bash
 npm test              # 全部

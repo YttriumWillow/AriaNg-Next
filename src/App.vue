@@ -34,8 +34,8 @@ function handleUrlApi(): void {
   const requests = parseUrlApi(route.query ? buildQuery(route.query) : '')
   if (requests.length === 0) return
 
-  const first = requests[0]
-  ui.openAddTask(first.value)
+  // 多个 addUrl / addMagnet 参数全部保留，按行传入对话框以便批量添加
+  ui.openAddTask(requests.map((item) => item.value).join('\n'))
 
   // 清掉参数，避免刷新时重复触发
   const query = { ...route.query }
@@ -44,11 +44,17 @@ function handleUrlApi(): void {
   void router.replace({ path: route.path, query })
 }
 
-/** 把 Vue Router 的 query 对象还原成 "?a=b&c=d" 形式。 */
+/** 把 Vue Router 的 query 对象还原成 "a=b&c=d" 形式（兼容同名多参数数组）。 */
 function buildQuery(query: Record<string, unknown>): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
-    if (typeof value === 'string') params.set(key, value)
+    if (typeof value === 'string') {
+      params.append(key, value)
+    } else if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === 'string') params.append(key, item)
+      }
+    }
   }
   return params.toString()
 }

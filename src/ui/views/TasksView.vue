@@ -2,8 +2,8 @@
 /**
  * 任务列表页。
  *
- * 这是复刻 AriaNg 的主战场：排序、搜索、过滤、拖拽调序、批量操作一个不少，
- * 只是换成了有列对齐的表格 / 卡片双模。
+ * 保留 AriaNg 的核心列表交互：排序、搜索、状态/协议过滤，
+ * 并提供表格 / 卡片双模切换。
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -13,7 +13,6 @@ import TaskCards from '@/ui/components/TaskCards.vue'
 import EmptyState from '@/ui/components/EmptyState.vue'
 import { useHostsStore } from '@/stores/hosts'
 import { useTasksStore } from '@/stores/tasks'
-import { useUiStore } from '@/stores/ui'
 import { useToastStore } from '@/stores/toast'
 import { useI18n } from '@/i18n'
 import { sortTasks, type TaskSortKey } from '@/core/model/sort'
@@ -24,7 +23,6 @@ const route = useRoute()
 const router = useRouter()
 const hosts = useHostsStore()
 const tasks = useTasksStore()
-const ui = useUiStore()
 const toast = useToastStore()
 const { t } = useI18n()
 
@@ -40,12 +38,16 @@ const statusFilter = computed(() => (route.query.status as string) ?? 'all')
 watch(
   () => route.query.status,
   () => {
-    // 状态变化时重置搜索，避免残留的搜索词让用户以为「任务不见了」
+    // 状态变化时重置搜索，并校验协议筛选是否在当前分类内存在，避免出现空下拉与空列表
     search.value = ''
+    if (protocolFilter.value !== 'all' && !availableProtocols.value.includes(protocolFilter.value)) {
+      protocolFilter.value = 'all'
+    }
   },
 )
 
-const state = computed(() => (hosts.activeHostId ? tasks.stateFor(hosts.activeHostId) : null))
+// 只读获取当前主机任务状态，避免计算属性期间意外触发 store 写入
+const state = computed(() => (hosts.activeHostId ? (tasks.byHost[hosts.activeHostId] ?? null) : null))
 
 /** 按状态分段取任务。 */
 const statusTasks = computed<Task[]>(() => {
@@ -63,31 +65,65 @@ const statusTasks = computed<Task[]>(() => {
       return value.stopped.filter((task) => task.status === 'error')
     case 'stopped':
       return value.stopped.filter((task) => task.status !== 'complete' && task.status !== 'error')
-    default:
-      return [...value.active, ...value.waiting, ...value.stopped]
+    default: {
+      const { active, waiting, stopped } = value
+      if (!active.length && !waiting.length) return stopped
+      if (!waiting.length && !stopped.length) return active
+      if (!active.length && !stopped.length) return waiting
+      return [...active, ...waiting, ...stopped]
+    }
   }
 })
 
-/** 可选的协议筛选项（只列出实际存在的）。 */
-const availableProtocols = computed(() => {
+/** 可选的协议筛选项（只列出实际存在的，并在集合不变时保持引用稳定以跳过下拉重绘）。 */
+const availableProtocols = computed<string[]>((previous) => {
   const set = new Set<string>()
   for (const task of statusTasks.value) set.add(task.protocol)
-  return [...set].sort()
+  const next = set.size > 0 ? [...set].sort() : []
+  if (previous && previous.length === next.length && previous.every((item, idx) => item === next[idx])) {
+    return previous
+  }
+  return next
 })
 
+/** 预格式化协议选项，避免模板循环中重复映射显示名。 */
+const protocolOptions = computed(() =>
+  availableProtocols.value.map((value) => ({
+    value,
+    label: protocolLabel(value),
+  })),
+)
+
 /** 搜索 + 协议过滤 + 排序。 */
-const visibleTasks = computed(() => {
+const visibleTasks = computed<Task[]>((previous) => {
+  const source = statusTasks.value
+  if (source.length === 0) {
+    return previous && previous.length === 0 ? previous : []
+  }
+
+  const protocol = protocolFilter.value
   const keyword = search.value.trim().toLowerCase()
-  const filtered = statusTasks.value.filter((task) => {
-    if (protocolFilter.value !== 'all' && task.protocol !== protocolFilter.value) return false
-    if (!keyword) return true
-    return (
-      task.name.toLowerCase().includes(keyword) ||
-      task.gid.toLowerCase().includes(keyword) ||
-      task.dir.toLowerCase().includes(keyword) ||
-      task.files.some((file) => file.path.toLowerCase().includes(keyword))
-    )
-  })
+
+  // 无筛选条件时跳过中间 filter 数组分配，直接交给 sortTasks 复制并排序
+  if (protocol === 'all' && !keyword) {
+    return sortTasks(source, sortKey.value, sortDescending.value)
+  }
+
+  const filtered: Task[] = []
+  for (let i = 0; i < source.length; i += 1) {
+    const task = source[i]
+    if (protocol !== 'all' && task.protocol !== protocol) continue
+    if (
+      keyword &&
+      !task.name.toLowerCase().includes(keyword) &&
+      !task.gid.toLowerCase().includes(keyword) &&
+      !task.dir.toLowerCase().includes(keyword) &&
+      !task.files.some((file) => file.path.toLowerCase().includes(keyword))
+    ) {
+      continue
+    }
+    filtered.push(task)
+  }
   return sortTasks(filtered, sortKey.value, sortDescending.value)
 })
 
@@ -122,7 +158,11 @@ async function onAction(action: string, gid: string): Promise<void> {
         toast.success(t('toast.taskResumed'))
         break
       case 'remove':
-        await tasks.remove(hostId, gid)
+        if (task && (task.status === 'complete' || task.status === 'error' || task.status === 'removed')) {
+          await tasks.clearFinished(hostId, gid)
+        } else {
+          await tasks.remove(hostId, gid)
+        }
         toast.success(t('toast.taskRemoved'))
         break
     }
@@ -148,10 +188,6 @@ function setStatus(status: string): void {
         <h1 class="an-page__title">{{ t('nav.tasks') }}</h1>
         <p class="an-page__desc">{{ visibleTasks.length }} / {{ statusTasks.length }}</p>
       </div>
-      <button class="an-btn an-btn--primary" type="button" @click="ui.openAddTask()">
-        <AppIcon class="an-btn__icon" name="plus" :size="14" />
-        {{ t('task.add') }}
-      </button>
     </div>
 
     <!-- 工具栏 -->
@@ -184,8 +220,8 @@ function setStatus(status: string): void {
       <!-- 协议过滤 -->
       <select v-model="protocolFilter" class="an-select" style="width: auto">
         <option value="all">{{ t('task.filterProtocol') }}</option>
-        <option v-for="protocol in availableProtocols" :key="protocol" :value="protocol">
-          {{ protocolLabel(protocol) }}
+        <option v-for="option in protocolOptions" :key="option.value" :value="option.value">
+          {{ option.label }}
         </option>
       </select>
 

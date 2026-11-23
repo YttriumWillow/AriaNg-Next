@@ -5,6 +5,39 @@
 
 ---
 
+## v0.3.0
+
+**主题：可靠性加固、三大原生主题、全局选项中文注释与渲染性能优化**
+
+### 可靠性与安全加固
+
+- **传输层与调度防漏**：为 `WsRpcTransport` 补齐请求超时、`close()` 队列清理、非法 JSON/非对象帧防护、断线在途请求快速失败及非法 WS 地址短路；`Poller.trigger()` 增加定时器去重，避免重入泄漏
+- **多主机连接竞态与防泄漏**：`hosts` store 增加连接代际校验，并在断开或切换时显式关闭旧 `connection`，同时让 `tasks.refresh()` 向上抛出异常以恢复轮询退避与错误计数
+- **坏缓存容错与注入防护**：为 `hosts` / `appearance` / `i18n` 读取补充类型清洗，损坏的 `localStorage` 数据不再导致启动崩溃；校验自定义令牌名/值、毛玻璃背景图 URL 与未闭合 CSS 注释/字符串，防止 CSS 注入或逃逸 `@scope`/`@layer`
+- **协议与交互修复**：修正任务请求 `user-agent` 键名、批量 URI 独立提交、添加对话框状态残留、`AddTaskDialog`/`App.vue` 多链接 URL API、完成/出错记录清理及移动端与键盘无障碍适配
+
+### 外观主题重构与切换修复
+
+- **三大原生主题**：精细调校「亮色 · 轻盈空气感」「暗色 · 精致桌面台」「毛玻璃 · 柔和弥散玻璃」三套设计令牌与预览卡，补全 `color-scheme` 与无 `backdrop-filter` 降级样式
+- **修复右侧主面板切换不刷新**：切主题与跟随系统切换时自动清理与主题强绑定的颜色/表面/毛玻璃覆盖（同时保留圆角、字号、侧栏宽度等布局自定义），解决 `#an-token-css` 压过 `[data-theme]` 导致的左右撕裂；同步优化 `AppearanceView` 实时色值回显与单项重置
+
+### 全局选项中文说明与悬停提示
+
+- **197 项中文释义字典**（`src/core/model/optionDocs.ts`）：零框架依赖，覆盖 aria2 与 aria2-next 常用下载、限速、HTTP/代理、BT/DHT、Metalink、ED2K、媒体流及 RPC/会话选项
+- **搜索与无障碍悬停气泡**：设置页全局选项支持按英文键名、当前值、中文短标题与说明正文搜索；选项键严格保持无衬线字体，鼠标悬停或键盘聚焦信息图标时弹出详细说明与示例
+
+### 渲染效率与打包优化
+
+- **状态去抖与行级缓存**：`tasks` store 在轮询时对比并复用未变化任务引用（保留 Pinia 响应式代理不变式）；`TaskTable` / `TaskCards` 引入 `v-memo` 与 `content-visibility: auto` 跳过静止行与视口外重绘
+- **单遍统计与 `vendor` 分包**：`DashboardView` 合并为单遍摘要计算，`SpeedChart` 合并路径生成并短路空/零速率，`SideNav` / `TasksView` 缓存只读计算属性；`vite.config.ts` 拆分 `vendor`（`vue` / `pinia` / `vue-router`）并保持 `base: './'` 纯静态输出
+
+### 文档、工具与测试
+
+- 同步 `README.md`、`docs/ARCHITECTURE.md`、`docs/VERIFICATION.md` 及 `tools/` 脚本（支持安全 JSON 输出、跨平台测试与多链接验证）
+- 新增 `tests/reliability.test.ts` 与 `tests/optionDocs.test.ts`，并扩充 `tests/appearance.test.ts`、`tests/cssContract.test.ts`（单元测试 **91 → 121**）
+
+---
+
 ## v0.2.0
 
 **主题：真实后端实测 —— 把「声称支持」变成「验证过支持」**
@@ -61,7 +94,7 @@
 - 新增 CI 与 Release 工作流
 - 修复开关「开启」状态不生效，并改善无障碍可达性
 - 加宽令牌编辑器的数值输入框（`420px` 曾被挤成 `42C`）
-- 单元测试 63 → 91
+- 单元测试 60 → 91
 
 ---
 

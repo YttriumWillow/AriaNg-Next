@@ -79,7 +79,13 @@ export class Poller {
 
   private scheduleNext(tick: () => Promise<void> | void, delay: number): void {
     if (!this.running) return
+    // 清掉已有的待触发定时器，避免 trigger() 与 run() 并发时叠出多条轮询链
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
     this.timer = setTimeout(() => {
+      this.timer = null
       void this.run(tick)
     }, delay)
   }
@@ -96,6 +102,8 @@ export class Poller {
       this.consecutiveErrors = 0
       this.currentInterval = this.options.intervalMs
     } catch (error) {
+      // 如果在请求途中已被 stop()，不再累计错误或向外弹窗
+      if (!this.running) return
       this.consecutiveErrors += 1
       const factor = this.options.backoffFactor ?? 2
       const max = this.options.maxIntervalMs ?? 60_000

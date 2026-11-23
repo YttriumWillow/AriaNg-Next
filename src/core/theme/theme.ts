@@ -28,23 +28,23 @@ export interface ThemeDefinition {
 export const THEMES: ThemeDefinition[] = [
   {
     name: 'light',
-    label: '亮色 Light',
-    description: '默认 · 白天 / 文档场景',
-    accent: '#2f6f5e',
+    label: '亮色 · 轻盈空气感',
+    description: '暖瓷白底布 + 轻盈漫反射阴影，适合日常桌面',
+    accent: '#b8435f',
     supportsAuto: true,
   },
   {
     name: 'dark',
-    label: '暗色 Dark',
-    description: '默认 · 夜间 / NAS 常驻大屏',
-    accent: '#4fb39a',
+    label: '暗色 · 精致桌面台',
+    description: '三阶暖黑分层 + 顶部微高光棱线，适合夜间大屏',
+    accent: '#f2acba',
     supportsAuto: true,
   },
   {
     name: 'glass',
-    label: '毛玻璃 Glass',
-    description: '可选 · 半透明 / 桌面环境',
-    accent: '#7fb6d6',
+    label: '毛玻璃 · 柔和弥散玻璃',
+    description: '低饱和浅雾粉晕 + 高通透磨砂折射边框',
+    accent: '#b8435f',
     supportsAuto: false,
   },
 ]
@@ -105,17 +105,101 @@ export interface EditableToken {
 export const EDITABLE_TOKENS: EditableToken[] = [
   { name: '--an-accent', label: '主色', type: 'color', defaultValue: '#b8435f', group: '颜色' },
   { name: '--an-accent-fill', label: '品牌填充色', type: 'color', defaultValue: '#f2acba', group: '颜色' },
-  { name: '--an-bg', label: '页面背景', type: 'color', defaultValue: '#faf7f8', group: '颜色' },
+  { name: '--an-bg', label: '页面背景', type: 'color', defaultValue: '#fbf8f9', group: '颜色' },
   { name: '--an-surface', label: '卡片表面', type: 'color', defaultValue: '#ffffff', group: '颜色' },
   { name: '--an-border', label: '描边', type: 'color', defaultValue: '#eae2e5', group: '颜色' },
   { name: '--an-text', label: '正文文字', type: 'color', defaultValue: '#1b1517', group: '颜色' },
   { name: '--an-text-muted', label: '次要文字', type: 'color', defaultValue: '#5c5358', group: '颜色' },
-  { name: '--an-radius-md', label: '圆角', type: 'length', defaultValue: '10px', group: '形状' },
-  { name: '--an-radius-lg', label: '大圆角', type: 'length', defaultValue: '14px', group: '形状' },
+  { name: '--an-radius-md', label: '圆角', type: 'length', defaultValue: '12px', group: '形状' },
+  { name: '--an-radius-lg', label: '大圆角', type: 'length', defaultValue: '16px', group: '形状' },
   { name: '--an-text-md', label: '正文字号', type: 'length', defaultValue: '14px', group: '排版' },
-  { name: '--an-sidebar-width', label: '侧栏宽度', type: 'length', defaultValue: '232px', group: '布局' },
+  { name: '--an-sidebar-width', label: '侧栏宽度', type: 'length', defaultValue: '224px', group: '布局' },
   { name: '--an-drawer-width', label: '抽屉宽度', type: 'length', defaultValue: '420px', group: '布局' },
 ]
+
+/**
+ * 与主题强绑定的设计令牌清单（颜色 / 表面 / 描边 / 阴影 / 毛玻璃背景等）。
+ *
+ * ⚠️ 为什么要专门列一份「主题耦合令牌」？
+ *   `#an-token-css` 会把用户改过的令牌写成 `@layer tokens { :root { ... } }`，
+ *   并插入在打包产物 `tokens.css` 之后。在 CSS 里 `:root` 与 `[data-theme='dark']` /
+ *   `[data-theme='glass']` 具有完全相同的选择器特异性 `(0, 1, 0)`，且同处
+ *   `@layer tokens` —— 于是后出现的 `#an-token-css` 会压过主题选择器。
+ *
+ *   假设用户在亮色下调过 `--an-bg` 或 `--an-surface`（却没有编辑 `--an-sidebar-bg`），
+ *   切换到暗色或毛玻璃时就会出现「左侧边栏变了，右侧主面板仍卡在亮色」的撕裂现象。
+ *
+ *   因此切换主题时必须清除这些主题耦合覆盖，同时完整保留圆角、字号、
+ *   侧栏/抽屉宽度等布局与形状自定义。
+ */
+export const THEME_COUPLED_TOKENS = [
+  '--an-bg',
+  '--an-sidebar-bg',
+  '--an-topbar-bg',
+  '--an-surface',
+  '--an-surface-2',
+  '--an-surface-hover',
+  '--an-border',
+  '--an-border-strong',
+  '--an-text',
+  '--an-text-muted',
+  '--an-text-faint',
+  '--an-accent',
+  '--an-accent-hover',
+  '--an-accent-fill',
+  '--an-accent-fill-hover',
+  '--an-accent-contrast',
+  '--an-accent-soft',
+  '--an-success',
+  '--an-success-soft',
+  '--an-warning',
+  '--an-warning-soft',
+  '--an-danger',
+  '--an-danger-soft',
+  '--an-info',
+  '--an-info-soft',
+  '--an-proto-bt',
+  '--an-proto-bt-soft',
+  '--an-proto-ed2k',
+  '--an-proto-ed2k-soft',
+  '--an-proto-hls',
+  '--an-proto-hls-soft',
+  '--an-proto-dash',
+  '--an-proto-dash-soft',
+  '--an-proto-sftp',
+  '--an-proto-sftp-soft',
+  '--an-proto-metalink',
+  '--an-proto-metalink-soft',
+  '--an-switch-on',
+  '--an-brand-bg',
+  '--an-brand-ink',
+  '--an-brand-ink-muted',
+  '--an-brand-pill-bg',
+  '--an-card-highlight',
+  '--an-shadow-1',
+  '--an-shadow-2',
+  '--an-shadow-3',
+  '--an-surface-alpha',
+  '--an-backdrop-blur',
+  '--an-backdrop-image',
+  '--an-backdrop-attachment',
+] as const
+
+const THEME_COUPLED_TOKEN_SET: ReadonlySet<string> = new Set(THEME_COUPLED_TOKENS)
+
+/** 移除与主题绑定的令牌覆盖，保留圆角 / 字号 / 宽度等与主题无关的自定义项。 */
+export function stripThemeCoupledOverrides(
+  overrides: Record<string, string>,
+): Record<string, string> {
+  if (!overrides || typeof overrides !== 'object') return {}
+  const next: Record<string, string> = {}
+  for (const [name, value] of Object.entries(overrides)) {
+    if (!THEME_COUPLED_TOKEN_SET.has(name)) {
+      next[name] = value
+    }
+  }
+  return next
+}
 
 /* ------------------------------------------------------------------ *
  * 应用主题
@@ -164,6 +248,21 @@ export function prefersDark(): boolean {
 /** 令牌覆盖的 <style> 元素 id。 */
 const TOKEN_STYLE_ID = 'an-token-css'
 
+export function isValidTokenName(name: string): boolean {
+  return /^--[a-zA-Z0-9_-]+$/.test(name)
+}
+
+/** 校验 CSS 属性值，防止通过 `;` / `{` / `}` / 注释或 `@import` 逃逸出 `:root` 块。 */
+export function isSafeCssValue(value: string): boolean {
+  const trimmed = value.trim()
+  if (trimmed === '') return false
+  if (/[{};\r\n]/.test(trimmed)) return false
+  if (trimmed.includes('/*') || trimmed.includes('*/')) return false
+  const lower = trimmed.toLowerCase()
+  if (lower.includes('@import') || lower.includes('</style')) return false
+  return true
+}
+
 /**
  * 把令牌覆盖打包成 CSS 文本。
  *
@@ -173,7 +272,10 @@ const TOKEN_STYLE_ID = 'an-token-css'
  *  - 令牌层永远排在组件层**之前**，因此组件层里读到的就是被覆盖后的值。
  */
 export function buildTokenLayer(overrides: Record<string, string>): string {
-  const entries = Object.entries(overrides).filter(([, value]) => value.trim() !== '')
+  if (!overrides || typeof overrides !== 'object') return ''
+  const entries = Object.entries(overrides).filter(
+    ([name, value]) => isValidTokenName(name) && typeof value === 'string' && isSafeCssValue(value),
+  )
   if (entries.length === 0) return ''
 
   const body = entries

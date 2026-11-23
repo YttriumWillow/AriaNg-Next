@@ -47,7 +47,7 @@ export function buildUrlApi(requests: UrlApiRequest[]): string {
   if (requests.length === 0) return ''
   const params = new URLSearchParams()
   for (const request of requests) {
-    params.set(request.action, request.value)
+    params.append(request.action, request.value)
   }
   return `?${params.toString()}`
 }

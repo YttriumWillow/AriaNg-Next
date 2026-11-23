@@ -14,15 +14,26 @@ import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import { useToastStore } from '@/stores/toast'
 import { useI18n } from '@/i18n'
+import { useHostName } from '@/ui/composables/useHostName'
 
 const hosts = useHostsStore()
 const tasks = useTasksStore()
 const ui = useUiStore()
 const toast = useToastStore()
 const { t } = useI18n()
+const { hostName } = useHostName()
 
 const runtime = computed(() => (hosts.activeHostId ? hosts.runtimeFor(hosts.activeHostId) : null))
 const state = computed(() => (hosts.activeHostId ? tasks.stateFor(hosts.activeHostId) : null))
+
+function onRefreshClick(): void {
+  if (!hosts.activeHostId) return
+  if (runtime.value?.status === 'error') {
+    void hosts.connect(hosts.activeHostId)
+  } else {
+    hosts.refreshNow(hosts.activeHostId)
+  }
+}
 
 async function togglePauseAll(): Promise<void> {
   if (!hosts.activeHostId) return
@@ -47,6 +58,28 @@ async function toggleResumeAll(): Promise<void> {
 
 <template>
   <header class="an-topbar">
+    <!-- 窄屏主机切换：手机端侧栏收敛到底部栏时，在顶栏保留主机与连接状态切换能力 -->
+    <div v-if="hosts.hosts.length" class="an-topbar__mobile-host">
+      <span
+        class="an-status-dot"
+        :class="{
+          'an-status-dot--active': runtime?.status === 'connected',
+          'an-status-dot--waiting': runtime?.status === 'connecting' || runtime?.status === 'reconnecting',
+          'an-status-dot--error': runtime?.status === 'error',
+        }"
+      />
+      <select
+        class="an-select"
+        :aria-label="t('nav.hosts')"
+        :value="hosts.activeHostId"
+        @change="hosts.selectHost(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="host in hosts.hosts" :key="host.id" :value="host.id">
+          {{ hostName(host) }}
+        </option>
+      </select>
+    </div>
+
     <div class="an-topbar__spacer" />
 
     <!-- 全局操作 -->
@@ -73,8 +106,8 @@ async function toggleResumeAll(): Promise<void> {
         class="an-btn an-btn--sm an-btn--icon"
         type="button"
         :title="t('common.refresh')"
-        :disabled="runtime?.status !== 'connected'"
-        @click="hosts.activeHostId && hosts.refreshNow(hosts.activeHostId)"
+        :disabled="runtime?.status !== 'connected' && runtime?.status !== 'error'"
+        @click="onRefreshClick"
       >
         <AppIcon class="an-btn__icon" name="refresh" :size="13" />
       </button>

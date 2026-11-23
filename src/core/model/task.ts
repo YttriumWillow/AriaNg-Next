@@ -222,7 +222,7 @@ export function computeProgress(raw: Aria2TaskStatus): number {
  *  - 速度为 0 时不估算，返回 null —— 宁可说「未知」，也不要给一个假数字。
  */
 export function computeEta(raw: Aria2TaskStatus, remainingLength: number, downloadSpeed: number): number | null {
-  if (raw.media?.live) return null
+  if (toBool(raw.media?.live)) return null
   if (raw.media && raw.media.state !== 'complete') {
     const duration = toNumber(raw.media.duration)
     const completed = toNumber(raw.media.completedDuration)
@@ -292,10 +292,10 @@ function nameFromUri(uri: string): string {
     return ''
   }
 
-  // magnet 链接：dn 参数就是显示名
+  // magnet 链接：dn 参数就是显示名（查询串里的 + 代表空格）
   if (uri.startsWith('magnet:')) {
     const match = /[?&]dn=([^&]+)/.exec(uri)
-    if (match?.[1]) return safeDecode(match[1])
+    if (match?.[1]) return safeDecode(match[1].replace(/\+/g, ' '))
     return ''
   }
 
@@ -330,9 +330,11 @@ export function normalizeTask(raw: Aria2TaskStatus): Task {
   const completedLength = toNumber(raw.completedLength)
   const downloadSpeed = toNumber(raw.downloadSpeed)
 
-  // 媒体任务的「剩余」按未完成的呈现时长算比较合理，但字节口径无从得知，
-  // 所以这里保留 aria2 给的 remainingLength（媒体任务通常为 0）。
-  const remainingLength = toNumber(raw.remainingLength)
+  // aria2-next 会直接返回 remainingLength；原版 aria2 省略该字段时按 total - completed 回退计算
+  const remainingLength =
+    raw.remainingLength !== undefined && raw.remainingLength !== ''
+      ? toNumber(raw.remainingLength)
+      : Math.max(0, totalLength - completedLength)
 
   return {
     gid: raw.gid,

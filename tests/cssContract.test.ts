@@ -84,4 +84,9 @@ describe('CSS 契约：BEM 修饰类必须挂在「块」上', () => {
 
     expect(css, '组件层不应出现 !important（优先级由 @layer 保证）').not.toMatch(/!\s*important/)
   })
+
+  it('显眼 UI 视图不违规使用等宽字体', () => {
+    const settings = readFileSync(join(SRC, 'ui', 'views', 'SettingsView.vue'), 'utf-8')
+    expect(settings).not.toContain('--an-font-mono')
+  })
 })

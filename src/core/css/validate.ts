@@ -30,7 +30,9 @@ export function findUnbalancedBrace(css: string): number | null {
   let depth = 0
   let line = 1
   let inString: string | null = null
+  let stringStartLine = 1
   let inComment = false
+  let commentStartLine = 1
 
   for (let i = 0; i < css.length; i += 1) {
     const char = css[i]
@@ -48,6 +50,7 @@ export function findUnbalancedBrace(css: string): number | null {
     }
     if (char === '/' && next === '*') {
       inComment = true
+      commentStartLine = line
       i += 1
       continue
     }
@@ -63,6 +66,7 @@ export function findUnbalancedBrace(css: string): number | null {
     }
     if (char === '"' || char === "'") {
       inString = char
+      stringStartLine = line
       continue
     }
 
@@ -73,6 +77,9 @@ export function findUnbalancedBrace(css: string): number | null {
     }
   }
 
+  // 未闭合的注释或字符串会吞掉外层 @scope / @layer 的闭合括号，必须拦截
+  if (inComment) return commentStartLine
+  if (inString) return stringStartLine
   // 结束时还多着开括号 -> 最后一行附近少了闭合
   if (depth > 0) return line
   return null
@@ -84,6 +91,9 @@ export function findUnbalancedBrace(css: string): number | null {
  * 校验通过返回 null，否则返回诊断信息。
  */
 export function validateCss(css: string): CssDiagnostic | null {
+  if (typeof css !== 'string') {
+    return { message: 'CSS 内容必须是字符串' }
+  }
   const trimmed = css.trim()
   if (trimmed === '') return null
 

@@ -75,8 +75,9 @@ function isAria2NextOnlyMethod(method: string): boolean {
 /**
  * 执行一次能力探测。
  *
- * 整个过程要**永不抛错** —— 探测失败只是意味着我们少显示一些功能，
- * 不应该让整个面板挂掉。任何一步出错都降级处理。
+ * 注意分工：
+ *  - `getVersion()` 是必选探针，连不上或鉴权失败会抛出异常交给上层处理；
+ *  - 其余扩展信息（如 `listMethods`）在不支持时降级兜底，不拖垮整个探测流程。
  */
 export async function probeCapabilities(client: Aria2Client): Promise<Capabilities> {
   // 第一步：版本信息（这一步失败说明根本连不上，交给上层处理）

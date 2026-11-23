@@ -1,6 +1,6 @@
 {
   "name": "ariang-next",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "AriaNg-Next · 面向 aria2-next 的 Web 控制面板",

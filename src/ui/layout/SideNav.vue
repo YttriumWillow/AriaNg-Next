@@ -24,6 +24,8 @@ import { useI18n } from '@/i18n'
 import { useHostName } from '@/ui/composables/useHostName'
 import { formatSpeed } from '@/core/model/format'
 
+import type { TransportStatus } from '@/core/rpc/transport'
+
 const route = useRoute()
 const router = useRouter()
 const hosts = useHostsStore()
@@ -31,7 +33,9 @@ const tasks = useTasksStore()
 const { t } = useI18n()
 const { hostName } = useHostName()
 
-const runtime = computed(() => (hosts.activeHostId ? hosts.runtimeFor(hosts.activeHostId) : null))
+// 统一用 computed 缓存当前激活主机的运行时与任务快照（只读，不在渲染/计算期调用 mutator）
+const runtime = computed(() => hosts.activeRuntime)
+const activeTaskState = computed(() => (hosts.activeHostId ? (tasks.byHost[hosts.activeHostId] ?? null) : null))
 
 /** aria2-next 核心的连接状态。 */
 const connection = computed(() => {
@@ -55,21 +59,30 @@ const version = computed(() => runtime.value?.capabilities?.version ?? '')
 
 /** 全局速率，显示在侧栏底部。 */
 const speeds = computed(() => {
-  const state = hosts.activeHostId ? tasks.stateFor(hosts.activeHostId) : null
+  const state = activeTaskState.value
   return {
     down: state?.globalStat.downloadSpeed ?? 0,
     up: state?.globalStat.uploadSpeed ?? 0,
   }
 })
 
-/** 当前主机的任务状态计数。 */
+/** 当前主机的任务状态计数（单遍统计 stopped，避免连续两次 filter 分配）。 */
 const counts = computed(() => {
-  const state = hosts.activeHostId ? tasks.stateFor(hosts.activeHostId) : null
+  const state = activeTaskState.value
+  if (!state) {
+    return { active: 0, waiting: 0, complete: 0, error: 0 }
+  }
+  let complete = 0
+  let error = 0
+  for (const task of state.stopped) {
+    if (task.status === 'complete') complete += 1
+    else if (task.status === 'error') error += 1
+  }
   return {
-    active: state?.active.length ?? 0,
-    waiting: state?.waiting.length ?? 0,
-    complete: state?.stopped.filter((task) => task.status === 'complete').length ?? 0,
-    error: state?.stopped.filter((task) => task.status === 'error').length ?? 0,
+    active: state.active.length,
+    waiting: state.waiting.length,
+    complete,
+    error,
   }
 })
 
@@ -81,21 +94,29 @@ const segments = computed(() => [
   { key: 'error', label: t('nav.error'), icon: 'alert', count: counts.value.error },
 ])
 
+/** 主机连接状态对应的圆点样式（纯映射函数，不触发 store 写入）。 */
+function statusDotClass(status: TransportStatus | undefined): string {
+  if (status === 'connected') return 'an-status-dot--active'
+  if (status === 'connecting' || status === 'reconnecting') return 'an-status-dot--waiting'
+  if (status === 'error') return 'an-status-dot--error'
+  return ''
+}
+
+/** 缓存侧栏主机条目与圆点样式，避免在模板 v-for 循环里反复调用 runtimeFor / hostName。 */
+const hostItems = computed(() =>
+  hosts.hosts.map((host) => ({
+    id: host.id,
+    name: hostName(host),
+    dotClass: statusDotClass(hosts.runtimes[host.id]?.status),
+  })),
+)
+
 function isActive(path: string): boolean {
   return route.path === path
 }
 
 function goTasks(status: string): void {
   void router.push({ path: '/tasks', query: { status } })
-}
-
-/** 主机连接状态对应的圆点样式。 */
-function statusClass(hostId: string): string {
-  const runtime = hosts.runtimeFor(hostId)
-  if (runtime.status === 'connected') return 'an-status-dot--active'
-  if (runtime.status === 'connecting' || runtime.status === 'reconnecting') return 'an-status-dot--waiting'
-  if (runtime.status === 'error') return 'an-status-dot--error'
-  return ''
 }
 
 /**
@@ -134,26 +155,27 @@ async function selectHost(hostId: string): Promise<void> {
     <!-- 概览：仪表盘是整个面板的总入口 -->
     <div class="an-sidebar__section">
       <div class="an-sidebar__section-title">{{ t('nav.overview') }}</div>
-      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/dashboard') }" to="/dashboard">
+      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/dashboard') }" to="/dashboard" :title="t('nav.dashboard')">
         <AppIcon class="an-nav-item__icon" name="dashboard" />
         <span class="an-nav-item__label">{{ t('nav.dashboard') }}</span>
       </RouterLink>
     </div>
 
     <!-- 主机 -->
-    <div class="an-sidebar__section">
+    <div class="an-sidebar__section an-sidebar__section--hosts">
       <div class="an-sidebar__section-title">{{ t('nav.hosts') }}</div>
       <div class="an-host-list">
         <button
-          v-for="host in hosts.hosts"
+          v-for="host in hostItems"
           :key="host.id"
           class="an-host-item"
           :class="{ 'an-host-item--active': host.id === hosts.activeHostId }"
           type="button"
+          :title="host.name"
           @click="selectHost(host.id)"
         >
-          <span class="an-status-dot" :class="statusClass(host.id)" />
-          <span class="an-host-item__name">{{ hostName(host) }}</span>
+          <span class="an-status-dot" :class="host.dotClass" />
+          <span class="an-host-item__name">{{ host.name }}</span>
         </button>
       </div>
     </div>
@@ -167,6 +189,7 @@ async function selectHost(hostId: string): Promise<void> {
         class="an-nav-item"
         :class="{ 'an-nav-item--active': route.path === '/tasks' && route.query.status === segment.key }"
         type="button"
+        :title="segment.label"
         @click="goTasks(segment.key)"
       >
         <AppIcon class="an-nav-item__icon" :name="segment.icon" />
@@ -178,15 +201,15 @@ async function selectHost(hostId: string): Promise<void> {
     <!-- 工具 -->
     <div class="an-sidebar__section">
       <div class="an-sidebar__section-title">{{ t('nav.tools') }}</div>
-      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/diagnostics') }" to="/diagnostics">
+      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/diagnostics') }" to="/diagnostics" :title="t('nav.diagnostics')">
         <AppIcon class="an-nav-item__icon" name="activity" />
         <span class="an-nav-item__label">{{ t('nav.diagnostics') }}</span>
       </RouterLink>
-      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/appearance') }" to="/appearance">
+      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/appearance') }" to="/appearance" :title="t('nav.appearance')">
         <AppIcon class="an-nav-item__icon" name="palette" />
         <span class="an-nav-item__label">{{ t('nav.appearance') }}</span>
       </RouterLink>
-      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/settings') }" to="/settings">
+      <RouterLink class="an-nav-item" :class="{ 'an-nav-item--active': isActive('/settings') }" to="/settings" :title="t('nav.settings')">
         <AppIcon class="an-nav-item__icon" name="sliders" />
         <span class="an-nav-item__label">{{ t('nav.settings') }}</span>
       </RouterLink>

@@ -19,11 +19,11 @@
  *
  * ============================== 怎么用 ==============================
  *
- *   node tools/mock-aria2.mjs            # 监听 6800（面板默认地址）
- *   node tools/mock-aria2.mjs --port 6801
+ *   node tools/mock-aria2.mjs            # 监听 6801（避免与真实 aria2-next 的 6800 冲突）
+ *   node tools/mock-aria2.mjs --port 6802
  *
  * 然后在面板「设置 → RPC 主机」里填：
- *   ws://127.0.0.1:6800/jsonrpc
+ *   ws://127.0.0.1:6801/jsonrpc
  *
  * 注意：真实 aria2-next 也默认占 6800，两者不能同时开。
  *       如果你已经在跑 aria2-next，就别启动这个脚本。
@@ -43,8 +43,12 @@ const portIndex = args.indexOf('--port')
  * 默认用 6801 而不是 6800 —— 6800 是 aria2-next 的默认端口，
  * 真实服务在跑的时候不要跟它抢。面板里把主机地址填成 ws://127.0.0.1:6801/jsonrpc 即可。
  */
-const PORT = portIndex >= 0 ? Number(args[portIndex + 1]) : 6801
-const SECRET = args.includes('--secret') ? args[args.indexOf('--secret') + 1] : ''
+const rawPort = portIndex >= 0 ? Number(args[portIndex + 1]) : 6801
+const PORT = Number.isFinite(rawPort) && rawPort > 0 ? rawPort : 6801
+const secretIndex = args.indexOf('--secret')
+const SECRET = secretIndex >= 0 && args[secretIndex + 1] && !args[secretIndex + 1].startsWith('--')
+  ? args[secretIndex + 1]
+  : ''
 
 /* ------------------------------------------------------------------ *
  * 模拟数据
@@ -265,7 +269,6 @@ const GLOBAL_OPTIONS = {
   'allow-overwrite': 'false',
   'file-allocation': 'falloc',
   'keep-unfinished-download-result': 'true',
-  'max-concurrent-downloads': '5',
   'rpc-listen-port': '6800',
   'dht-listen-port': '6881',
   'enable-dht': 'true',
@@ -394,16 +397,20 @@ function dispatch(method, params) {
 /** 处理一次 JSON-RPC 请求，返回响应体。 */
 function handleRpc(body) {
   const { id, method, params = [] } = body
+  const hasToken = typeof params[0] === 'string' && params[0].startsWith('token:')
 
-  // secret 校验：第一个参数是 "token:xxx" 形式
-  if (SECRET && typeof params[0] === 'string' && params[0].startsWith('token:')) {
-    if (params[0].slice(6) !== SECRET) {
+  // 只要启用了 SECRET，任何未携带 token 或 token 不匹配的请求都必须拒绝
+  if (SECRET) {
+    if (!hasToken || params[0].slice(6) !== SECRET) {
       return { jsonrpc: '2.0', id, error: { code: 1, message: 'Unauthorized' } }
     }
   }
 
+  // 剥离首位的 token:xxx 参数后再交给 dispatch，否则带鉴权时 offset/gid 参数位置会整体右移错位
+  const cleanParams = hasToken ? params.slice(1) : params
+
   try {
-    return { jsonrpc: '2.0', id, result: dispatch(method, params) }
+    return { jsonrpc: '2.0', id, result: dispatch(method, cleanParams) }
   } catch (error) {
     return {
       jsonrpc: '2.0',
@@ -433,13 +440,13 @@ const server = createServer((req, res) => {
     return
   }
 
-  let raw = ''
+  const chunks = []
   req.on('data', (chunk) => {
-    raw += chunk
+    chunks.push(chunk)
   })
   req.on('end', () => {
     try {
-      const body = JSON.parse(raw)
+      const body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
       console.log(`[mock-aria2] <- HTTP ${body.method}`)
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify(handleRpc(body)))

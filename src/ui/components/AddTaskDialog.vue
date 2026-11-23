@@ -61,13 +61,26 @@ const linkList = computed(() =>
     .filter((line) => line !== ''),
 )
 
-/** 打开时重置表单，并预填来自 URL API 的内容。 */
+/** 打开时彻底重置表单，避免上次的目录/种子/选项残留；若来自 URL API 则预填链接。 */
 watch(
   () => ui.addTaskOpen,
   (open) => {
     if (open) {
-      links.value = ui.addTaskSeed
+      const seed = ui.addTaskSeed
+      tab.value = seed.includes('\n') ? 'batch' : 'link'
+      links.value = seed
       probe.value = null
+      torrentBase64.value = ''
+      dir.value = ''
+      filename.value = ''
+      userAgent.value = ''
+      referer.value = ''
+      connections.value = ''
+      limit.value = ''
+      mediaFormat.value = 'mp4'
+      mediaVideo.value = 'best'
+      mediaAudio.value = 'best'
+      mediaRecordTime.value = ''
     }
   },
 )
@@ -126,7 +139,7 @@ function buildOptions(): Record<string, string> {
   const options: Record<string, string> = {}
   if (dir.value.trim()) options.dir = dir.value.trim()
   if (filename.value.trim()) options.out = filename.value.trim()
-  if (userAgent.value.trim()) options.userAgent = userAgent.value.trim()
+  if (userAgent.value.trim()) options['user-agent'] = userAgent.value.trim()
   if (referer.value.trim()) options.referer = referer.value.trim()
   if (connections.value.trim()) options['max-connection-per-server'] = connections.value.trim()
   if (limit.value.trim()) options['max-download-limit'] = limit.value.trim()
@@ -159,6 +172,15 @@ async function submit(): Promise<void> {
         return
       }
       await client.addTorrent(torrentBase64.value.trim(), [], options)
+    } else if (tab.value === 'batch') {
+      if (linkList.value.length === 0) {
+        toast.error(t('add.urlRequired'))
+        return
+      }
+      // 批量模式逐行创建独立任务（而非单任务的多镜像源）
+      for (const uri of linkList.value) {
+        await client.addUri([uri], options)
+      }
     } else {
       if (linkList.value.length === 0) {
         toast.error(t('add.urlRequired'))

@@ -34,7 +34,16 @@ const FIREFOX = process.env.FIREFOX_PATH ?? 'C:\\Program Files\\Mozilla Firefox\
 const DEBUG_PORT = Number(process.env.FF_DEBUG_PORT ?? 9333)
 
 const args = process.argv.slice(2)
-const positional = args.filter((arg) => !arg.startsWith('--') && !/^\d+$/.test(arg))
+const VALUE_FLAGS = new Set(['--wait', '--measure', '--size', '--profile', '--eval', '--eval-file'])
+const positional = []
+for (let i = 0; i < args.length; i += 1) {
+  if (VALUE_FLAGS.has(args[i])) {
+    i += 1
+    continue
+  }
+  if (args[i].startsWith('--')) continue
+  positional.push(args[i])
+}
 const url = positional[0]
 const output = positional[1]
 const waitIndex = args.indexOf('--wait')
@@ -257,8 +266,8 @@ try {
   if (traceIndex >= 0) {
     const result = await client.send('script.evaluate', {
       expression: `JSON.stringify({
-        pill: document.querySelector('.an-conn')?.textContent?.trim(),
-        pillClass: document.querySelector('.an-conn')?.className,
+        pill: document.querySelector('.an-brand__pill')?.textContent?.trim(),
+        pillClass: document.querySelector('.an-brand__pill')?.className,
         sockets: window.__anWs ?? []
       })`,
       target: { context },

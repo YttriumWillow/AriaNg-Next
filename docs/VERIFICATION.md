@@ -127,7 +127,7 @@ Invalid torrent file: expected value ... in bencoded string
 | 扩展 | 关键字段 |
 |---|---|
 | `media` | `state` / `protocol` / `live` / `duration` / `completedDuration` / `downloadedLength` / `lengthKnown` / `tracks[]` / `error` / `errorCode` |
-| `ed2k` | `hash` / `length` / `partHashCount` / `peerCount` / `queuedPeerCount` / `kadNodeCount` / `tcpPort` / `userHash` / `clientId` |
+| `ed2k` | 任务级：`hash` / `length` / `partHashCount` / `peerCount` / `queuedPeerCount`（全局 `aria2.getEd2kStatus`：`tcpPort` / `userHash` / `clientId`） |
 | `bittorrent` | `announceList[]` / `webSeeds[]` / `magnetLink` / `infoHashV1` / `state` / `numPeers` / `numSeeds` / `progress` / `availability` / `currentTracker` |
 
 ### 3.3 `options` 必须是对象，不是键值数组

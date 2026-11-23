@@ -14,81 +14,146 @@ import { useHostsStore } from '@/stores/hosts'
 import { useTasksStore } from '@/stores/tasks'
 import { useI18n } from '@/i18n'
 import { useHostName } from '@/ui/composables/useHostName'
-import { formatBytes, formatSpeed } from '@/core/model/format'
-import { protocolLabel } from '@/core/model/format'
+import { formatBytes, formatSpeed, protocolLabel } from '@/core/model/format'
+import type { Task } from '@/core/model/task'
 
 const hosts = useHostsStore()
 const tasks = useTasksStore()
 const { t } = useI18n()
 const { hostName } = useHostName()
 
-const state = computed(() => (hosts.activeHostId ? tasks.stateFor(hosts.activeHostId) : null))
+// 只读访问当前主机快照，避免在 computed / 渲染期触发 stateFor() 写入副作用
+const state = computed(() => (hosts.activeHostId ? (tasks.byHost[hosts.activeHostId] ?? null) : null))
 const connected = computed(() => hosts.activeRuntime?.status === 'connected')
 
-/** 所有任务（三个状态段合起来）。 */
-const allTasks = computed(() => {
-  const value = state.value
-  if (!value) return []
-  return [...value.active, ...value.waiting, ...value.stopped]
-})
+interface DashboardSummary {
+  totalCount: number
+  activeCount: number
+  anomalyCount: number
+  seedingCount: number
+  statusCounts: Record<string, number>
+  protocolCounts: [string, number][]
+  activeProtocolCounts: [string, number][]
+  activeProtocolText: string
+  recentCompleted: Task[]
+}
 
-/** 异常任务数：出错的 + 已暂停但仍在等待队列里的。 */
-const anomalyCount = computed(
-  () => allTasks.value.filter((task) => task.status === 'error' || task.status === 'paused').length,
-)
+const STATUS_ORDER = ['active', 'waiting', 'paused', 'complete', 'error'] as const
 
-/** 各协议的任务数量。 */
-const protocolCounts = computed(() => {
-  const counts = new Map<string, number>()
-  for (const task of allTasks.value) {
-    counts.set(task.protocol, (counts.get(task.protocol) ?? 0) + 1)
-  }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1])
-})
+const STATUS_BAR_COLORS: Record<string, string> = {
+  active: 'var(--an-accent)',
+  waiting: 'var(--an-info)',
+  paused: 'var(--an-warning)',
+  complete: 'var(--an-success)',
+  error: 'var(--an-danger)',
+}
 
 /**
- * **活跃任务**的协议分布。
+ * 仪表盘单遍统计摘要。
  *
- * ⚠️ 这里必须和上面的 protocolCounts 分开。
- *
- * protocolCounts 统计的是**全部**任务（下载中 + 等待中 + 已完成 + 出错），
- * 而它原本被放在「活跃任务 N」卡片的副行里 ——
- * 主数字写着 2，副行却列着 BT 4 · HTTP 3 · ED2K 1（那是全部 11 个任务的分布）。
- * 两个数字口径不一致，用户会以为「活跃任务里有 4 个 BT」，越看越糊涂。
- *
- * 卡片副行必须和主数字**同一个口径**：这里就只数活跃任务。
- * 全部任务的协议分布由下方「协议分布」卡片单独呈现，不重复。
+ * 把状态分布、总协议分布、活跃协议分布、做种数、异常数与最近完成 Top 5
+ * 合并进一次遍历中完成，避免拼接 allTasks 并反复全量扫表 5 次：
+ *  - 当速率历史每秒新增采样但任务列表未变化时，本 computed 不会重新计算；
+ *  - ⚠️ 活跃任务的协议分布（activeProtocolCounts）必须与全部任务的协议分布分开：
+ *    「活跃任务 N」卡片的副行必须和主数字同一个口径（只数活跃任务），
+ *    全部任务的协议分布由下方「协议分布」卡片单独呈现。
  */
-const activeProtocolCounts = computed(() => {
-  const counts = new Map<string, number>()
-  for (const task of state.value?.active ?? []) {
-    counts.set(task.protocol, (counts.get(task.protocol) ?? 0) + 1)
+const dashboardSummary = computed<DashboardSummary>(() => {
+  const value = state.value
+  const statusCounts: Record<string, number> = {
+    active: 0,
+    waiting: 0,
+    paused: 0,
+    complete: 0,
+    error: 0,
   }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1])
-})
 
-/** 各状态的任务数量。 */
-const statusCounts = computed(() => {
-  const counts = new Map<string, number>()
-  for (const task of allTasks.value) {
-    counts.set(task.status, (counts.get(task.status) ?? 0) + 1)
+  if (!value) {
+    return {
+      totalCount: 0,
+      activeCount: 0,
+      anomalyCount: 0,
+      seedingCount: 0,
+      statusCounts,
+      protocolCounts: [],
+      activeProtocolCounts: [],
+      activeProtocolText: '',
+      recentCompleted: [],
+    }
   }
-  return counts
+
+  const protocolMap = new Map<string, number>()
+  const activeProtocolMap = new Map<string, number>()
+  const recentCompleted: Task[] = []
+  let totalCount = 0
+  let anomalyCount = 0
+  let seedingCount = 0
+
+  const visit = (task: Task, isActiveList: boolean): void => {
+    totalCount += 1
+    statusCounts[task.status] = (statusCounts[task.status] ?? 0) + 1
+    protocolMap.set(task.protocol, (protocolMap.get(task.protocol) ?? 0) + 1)
+
+    if (isActiveList) {
+      activeProtocolMap.set(task.protocol, (activeProtocolMap.get(task.protocol) ?? 0) + 1)
+      if (task.totalLength > 0 && task.completedLength >= task.totalLength) {
+        seedingCount += 1
+      }
+    }
+
+    if (task.status === 'error' || task.status === 'paused') {
+      anomalyCount += 1
+    }
+
+    if (task.status === 'complete') {
+      // 仅维护前 5 条最大已完成任务，跳过全量 filter + sort 分配
+      if (recentCompleted.length < 5 || task.completedLength > recentCompleted[4].completedLength) {
+        let insertAt = recentCompleted.length
+        for (let i = 0; i < recentCompleted.length; i += 1) {
+          if (task.completedLength > recentCompleted[i].completedLength) {
+            insertAt = i
+            break
+          }
+        }
+        recentCompleted.splice(insertAt, 0, task)
+        if (recentCompleted.length > 5) recentCompleted.pop()
+      }
+    }
+  }
+
+  for (const task of value.active) visit(task, true)
+  for (const task of value.waiting) visit(task, false)
+  for (const task of value.stopped) visit(task, false)
+
+  const protocolCounts = [...protocolMap.entries()].sort((a, b) => b[1] - a[1])
+  const activeProtocolCounts = [...activeProtocolMap.entries()].sort((a, b) => b[1] - a[1])
+  const activeProtocolText = activeProtocolCounts
+    .map(([protocol, count]) => `${protocolLabel(protocol)} ${count}`)
+    .join(' · ')
+
+  return {
+    totalCount,
+    activeCount: value.active.length,
+    anomalyCount,
+    seedingCount,
+    statusCounts,
+    protocolCounts,
+    activeProtocolCounts,
+    activeProtocolText,
+    recentCompleted,
+  }
 })
 
 /** 速率峰值。 */
 const peakDown = computed(() => {
-  const points = state.value?.speedHistory ?? []
-  return points.reduce((max, point) => Math.max(max, point.down), 0)
+  const points = state.value?.speedHistory
+  if (!points || points.length === 0) return 0
+  let max = 0
+  for (let i = 0; i < points.length; i += 1) {
+    if (points[i].down > max) max = points[i].down
+  }
+  return max
 })
-
-/** 最近完成的任务。 */
-const recentCompleted = computed(() =>
-  allTasks.value
-    .filter((task) => task.status === 'complete')
-    .sort((a, b) => b.completedLength - a.completedLength)
-    .slice(0, 5),
-)
 </script>
 
 <template>
@@ -112,10 +177,8 @@ const recentCompleted = computed(() =>
       <div class="an-grid an-grid--4">
         <StatCard
           :label="t('dashboard.activeTasks')"
-          :value="String(state?.active.length ?? 0)"
-          :meta="activeProtocolCounts.length
-            ? activeProtocolCounts.map(([p, n]) => `${protocolLabel(p)} ${n}`).join(' · ')
-            : `${t('dashboard.totalTasks')} ${allTasks.length}`"
+          :value="String(dashboardSummary.activeCount)"
+          :meta="dashboardSummary.activeProtocolText || `${t('dashboard.totalTasks')} ${dashboardSummary.totalCount}`"
         />
         <StatCard
           :label="t('dashboard.downloadSpeed')"
@@ -125,13 +188,13 @@ const recentCompleted = computed(() =>
         <StatCard
           :label="t('dashboard.uploadSpeed')"
           :value="formatSpeed(state?.globalStat.uploadSpeed ?? 0)"
-          :meta="`${t('dashboard.seeding')} ${statusCounts.get('complete') ?? 0}`"
+          :meta="`${t('dashboard.seeding')} ${dashboardSummary.seedingCount}`"
         />
         <StatCard
           :label="t('dashboard.anomalies')"
-          :value="String(anomalyCount)"
-          :meta="`${statusCounts.get('error') ?? 0} ${t('status.error')}`"
-          :alert="anomalyCount > 0"
+          :value="String(dashboardSummary.anomalyCount)"
+          :meta="`${dashboardSummary.statusCounts.error ?? 0} ${t('status.error')}`"
+          :alert="dashboardSummary.anomalyCount > 0"
         />
       </div>
 
@@ -151,16 +214,19 @@ const recentCompleted = computed(() =>
         <div class="an-card">
           <div class="an-card__head"><span class="an-card__title">{{ t('dashboard.statusDistribution') }}</span></div>
           <div class="an-card__body" style="display: flex; flex-direction: column; gap: 8px">
-            <div v-for="status in ['active', 'waiting', 'paused', 'complete', 'error']" :key="status" style="display: grid; grid-template-columns: 70px 1fr 40px; gap: 10px; align-items: center">
+            <div v-for="status in STATUS_ORDER" :key="status" style="display: grid; grid-template-columns: 70px 1fr 40px; gap: 10px; align-items: center">
               <span style="font-size: 12px; color: var(--an-text-muted)">{{ t(`status.${status}`) }}</span>
               <div style="height: 7px; border-radius: 4px; background: var(--an-surface-2); overflow: hidden">
                 <div
-                  style="height: 100%; border-radius: 4px; background: var(--an-accent)"
-                  :style="{ width: `${allTasks.length ? ((statusCounts.get(status) ?? 0) / allTasks.length) * 100 : 0}%` }"
+                  style="height: 100%; border-radius: 4px"
+                  :style="{
+                    width: `${dashboardSummary.totalCount ? ((dashboardSummary.statusCounts[status] ?? 0) / dashboardSummary.totalCount) * 100 : 0}%`,
+                    background: STATUS_BAR_COLORS[status] ?? 'var(--an-accent)',
+                  }"
                 />
               </div>
               <span style="font-size: 12px; text-align: right; font-variant-numeric: tabular-nums">
-                {{ statusCounts.get(status) ?? 0 }}
+                {{ dashboardSummary.statusCounts[status] ?? 0 }}
               </span>
             </div>
           </div>
@@ -170,17 +236,17 @@ const recentCompleted = computed(() =>
           <div class="an-card__head"><span class="an-card__title">{{ t('dashboard.protocolDistribution') }}</span></div>
           <div class="an-card__body">
             <div style="display: flex; flex-wrap: wrap; gap: 6px">
-              <span v-for="[protocol, count] in protocolCounts" :key="protocol" class="an-badge an-badge--accent">
+              <span v-for="[protocol, count] in dashboardSummary.protocolCounts" :key="protocol" class="an-badge an-badge--accent">
                 {{ protocolLabel(protocol) }} {{ count }}
               </span>
-              <span v-if="!protocolCounts.length" style="font-size: 12px; color: var(--an-text-faint)">
+              <span v-if="!dashboardSummary.protocolCounts.length" style="font-size: 12px; color: var(--an-text-faint)">
                 {{ t('common.empty') }}
               </span>
             </div>
 
-            <div v-if="recentCompleted.length" style="margin-top: 16px">
+            <div v-if="dashboardSummary.recentCompleted.length" style="margin-top: 16px">
               <div class="an-card__title" style="margin-bottom: 8px">{{ t('dashboard.recentCompleted') }}</div>
-              <div v-for="task in recentCompleted" :key="task.gid" style="display: flex; align-items: center; gap: 8px; padding: 4px 0">
+              <div v-for="task in dashboardSummary.recentCompleted" :key="task.gid" style="display: flex; align-items: center; gap: 8px; padding: 4px 0">
                 <ProtocolBadge :protocol="task.protocol" />
                 <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px">
                   {{ task.name }}

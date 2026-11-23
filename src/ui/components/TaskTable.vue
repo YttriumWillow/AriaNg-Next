@@ -29,7 +29,7 @@ const emit = defineEmits<{
   detail: [gid: string]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 /** 表头定义。sortable 为 false 的列不参与排序。 */
 const columns = computed(() => [
@@ -42,11 +42,14 @@ const columns = computed(() => [
   { key: 'eta', label: t('task.eta'), sortable: true },
 ])
 
-/** 根据任务状态选择进度条样式。 */
+/** 根据任务状态选择进度条样式。活跃做种（100% 且仍在 active）同样使用做种绿。 */
 function progressVariant(task: Task): 'default' | 'seeding' | 'paused' | 'error' | 'live' {
   if (task.status === 'error') return 'error'
   if (task.status === 'paused') return 'paused'
   if (task.status === 'complete') return 'seeding'
+  if (task.status === 'active' && task.totalLength > 0 && task.completedLength >= task.totalLength) {
+    return 'seeding'
+  }
   if (task.media?.live) return 'live'
   return 'default'
 }
@@ -108,7 +111,31 @@ function canResume(task: Task): boolean {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="task in tasks" :key="task.gid">
+        <!-- 按行缓存展示字段：静止行在每秒轮询时直接跳过 VNode diff，切换语言时靠 locale 触发重绘 -->
+        <tr
+          v-for="task in tasks"
+          :key="task.gid"
+          v-memo="[
+            task.gid,
+            task.status,
+            task.name,
+            task.protocol,
+            task.dir,
+            task.progress,
+            task.completedLength,
+            task.totalLength,
+            task.remainingLength,
+            task.downloadSpeed,
+            task.uploadSpeed,
+            task.etaSeconds,
+            task.errorMessage,
+            task.media?.state,
+            task.media?.live,
+            task.media?.progress,
+            busyGids.has(task.gid),
+            locale,
+          ]"
+        >
           <!-- 名称 + 协议 + 路径 -->
           <td style="max-width: 320px">
             <div class="an-task-name">
@@ -197,3 +224,13 @@ function canResume(task: Task): boolean {
     </table>
   </div>
 </template>
+
+<style>
+@layer components {
+  /* 视口外表格行跳过布局与绘制，降低长列表每秒轮询的渲染压力 */
+  .an-table tbody tr {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 58px;
+  }
+}
+</style>

@@ -8,7 +8,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import AppIcon from '@/ui/components/AppIcon.vue'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   title: string
   /** 是否使用更宽的版式 */
@@ -17,9 +17,9 @@ defineProps<{
 
 const emit = defineEmits<{ close: [] }>()
 
-/** Esc 关闭对话框 —— 键盘用户的基本预期。 */
+/** Esc 关闭对话框 —— 键盘用户的基本预期（仅在打开态响应）。 */
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') emit('close')
+  if (props.open && event.key === 'Escape') emit('close')
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown))

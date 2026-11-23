@@ -27,6 +27,7 @@
 
 @layer tokens {
   :root {
+    color-scheme: light;
     /* ---------- 字体 ---------- */
     /*
      * 字体栈说明（按可用性从左到右回退）：
@@ -62,17 +63,19 @@
 
     /* ---------- 圆角 ---------- */
     --an-radius-sm: 6px;
-    --an-radius-md: 10px;
-    --an-radius-lg: 14px;
+    --an-radius-md: 12px;
+    --an-radius-lg: 16px;
     --an-radius-pill: 999px;
 
-    /* ---------- 颜色（亮色主题 · 暖中性 + 玫瑰主色） ---------- */
-    --an-bg: #faf7f8;
+    /* ---------- 颜色（亮色主题 · 轻盈空气感：暖瓷白 + 玫瑰主色） ---------- */
+    --an-bg: #fbf8f9;
+    --an-sidebar-bg: #f6f2f4;
+    --an-topbar-bg: rgba(251, 248, 249, 0.86);
     --an-surface: #ffffff;
     --an-surface-2: #f5f1f2;
     --an-surface-hover: #f0eaec;
-    --an-border: #eae2e5;
-    --an-border-strong: #dcd1d6;
+    --an-border: rgba(92, 26, 48, 0.08);
+    --an-border-strong: rgba(92, 26, 48, 0.16);
 
     --an-text: #1b1517;
     --an-text-muted: #5c5358;
@@ -98,6 +101,20 @@
     --an-info: #1f63c4;
     --an-info-soft: rgba(31, 99, 196, 0.11);
 
+    /* 协议徽章颜色令牌（亮色基准） */
+    --an-proto-bt: #4a6ea8;
+    --an-proto-bt-soft: rgba(96, 130, 200, 0.14);
+    --an-proto-ed2k: #5d7136;
+    --an-proto-ed2k-soft: rgba(122, 140, 90, 0.16);
+    --an-proto-hls: #9a5a30;
+    --an-proto-hls-soft: rgba(176, 105, 60, 0.14);
+    --an-proto-dash: #85569a;
+    --an-proto-dash-soft: rgba(150, 90, 160, 0.14);
+    --an-proto-sftp: #4c6b8a;
+    --an-proto-sftp-soft: rgba(90, 120, 150, 0.14);
+    --an-proto-metalink: #61585c;
+    --an-proto-metalink-soft: rgba(120, 110, 115, 0.15);
+
     /*
      * 开关的「开」状态用成功绿，不���品牌色。
      *
@@ -119,13 +136,14 @@
     --an-brand-ink-muted: rgba(42, 18, 25, 0.62);
     --an-brand-pill-bg: rgba(255, 255, 255, 0.72);
 
-    /* ---------- 阴影（带品牌色，借鉴 MiniMax 的紫调阴影手法） ---------- */
-    --an-shadow-1: 0 1px 2px rgba(92, 26, 48, 0.06);
-    --an-shadow-2: 0 6px 20px -6px rgba(92, 26, 48, 0.16);
-    --an-shadow-3: 0 18px 48px -12px rgba(92, 26, 48, 0.28);
+    /* ---------- 阴影（带品牌色，轻盈空气感漫反射） ---------- */
+    --an-card-highlight: 0 0 0 0 transparent;
+    --an-shadow-1: 0 2px 6px rgba(92, 26, 48, 0.04), 0 10px 24px -12px rgba(92, 26, 48, 0.11);
+    --an-shadow-2: 0 8px 24px -8px rgba(92, 26, 48, 0.16);
+    --an-shadow-3: 0 18px 48px -12px rgba(92, 26, 48, 0.26);
 
     /* ---------- 布局 ---------- */
-    --an-sidebar-width: 232px;
+    --an-sidebar-width: 224px;
     --an-drawer-width: 420px;
     --an-topbar-height: 56px;
 
@@ -140,14 +158,17 @@
     --an-backdrop-attachment: fixed;
   }
 
-  /* ---------------- 暗色主题（暖调近黑） ---------------- */
+  /* ---------------- 暗色主题（精致桌面台 · 三阶暖黑 + 微高光） ---------------- */
   [data-theme='dark'] {
-    --an-bg: #161113;
-    --an-surface: #1e181a;
-    --an-surface-2: #272023;
-    --an-surface-hover: #2e2629;
-    --an-border: #322a2d;
-    --an-border-strong: #463a3f;
+    color-scheme: dark;
+    --an-bg: #131012;
+    --an-sidebar-bg: #171316;
+    --an-topbar-bg: rgba(19, 16, 18, 0.85);
+    --an-surface: #1d181b;
+    --an-surface-2: #251f22;
+    --an-surface-hover: #2d2529;
+    --an-border: rgba(255, 255, 255, 0.08);
+    --an-border-strong: rgba(255, 255, 255, 0.15);
 
     --an-text: #f0e9eb;
     --an-text-muted: #a99da2;
@@ -170,31 +191,54 @@
     --an-info: #6ba3d8;
     --an-info-soft: rgba(107, 163, 216, 0.15);
 
+    /* 暗色主题下提高协议徽章明度，确保 AA 可读性 */
+    --an-proto-bt: #8aaee6;
+    --an-proto-bt-soft: rgba(138, 174, 230, 0.16);
+    --an-proto-ed2k: #a8c274;
+    --an-proto-ed2k-soft: rgba(168, 194, 116, 0.16);
+    --an-proto-hls: #e09c6e;
+    --an-proto-hls-soft: rgba(224, 156, 110, 0.16);
+    --an-proto-dash: #c996db;
+    --an-proto-dash-soft: rgba(201, 150, 219, 0.16);
+    --an-proto-sftp: #8db3d9;
+    --an-proto-sftp-soft: rgba(141, 179, 217, 0.16);
+    --an-proto-metalink: #b8afb3;
+    --an-proto-metalink-soft: rgba(184, 175, 179, 0.16);
+
     --an-switch-on: #4cb47c;
 
-    /* 暗色主题下品牌块用深玫瑰渐变，避免在近黑底上出现一块刺眼的大粉色 */
-    --an-brand-bg: linear-gradient(145deg, #4d333c 0%, #35242c 48%, #221920 100%);
+    /* 暗色主题下品牌头采用细微暗面高光渐变，消除厚重块感 */
+    --an-brand-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
     --an-brand-ink: #f2eaec;
     --an-brand-ink-muted: rgba(242, 234, 236, 0.62);
     --an-brand-pill-bg: rgba(255, 255, 255, 0.1);
 
-    --an-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --an-shadow-2: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
-    --an-shadow-3: 0 18px 48px -12px rgba(0, 0, 0, 0.7);
+    --an-card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --an-shadow-1: 0 8px 24px -10px rgba(0, 0, 0, 0.65);
+    --an-shadow-2: 0 12px 28px -8px rgba(0, 0, 0, 0.72);
+    --an-shadow-3: 0 20px 52px -12px rgba(0, 0, 0, 0.82);
+
+    /* 显式复位毛玻璃变量，避免从 glass 切到 dark 时残留预期外的模糊或渐变背景 */
+    --an-surface-alpha: 1;
+    --an-backdrop-blur: 0px;
+    --an-backdrop-image: none;
   }
 
-  /* ---------------- 毛玻璃主题（可选） ---------------- */
+  /* ---------------- 毛玻璃主题（柔和弥散玻璃 · 低饱和浅雾粉晕） ---------------- */
   [data-theme='glass'] {
-    --an-bg: #2b2026;
-    --an-surface: rgba(255, 255, 255, 0.58);
-    --an-surface-2: rgba(255, 255, 255, 0.4);
-    --an-surface-hover: rgba(255, 255, 255, 0.76);
-    --an-border: rgba(255, 255, 255, 0.34);
-    --an-border-strong: rgba(255, 255, 255, 0.52);
+    color-scheme: light;
+    --an-bg: #f5ecf0;
+    --an-sidebar-bg: rgba(255, 255, 255, 0.54);
+    --an-topbar-bg: rgba(255, 255, 255, 0.58);
+    --an-surface: rgba(255, 255, 255, 0.66);
+    --an-surface-2: rgba(255, 255, 255, 0.46);
+    --an-surface-hover: rgba(255, 255, 255, 0.8);
+    --an-border: rgba(255, 255, 255, 0.68);
+    --an-border-strong: rgba(255, 255, 255, 0.85);
 
     --an-text: #1b1517;
-    --an-text-muted: #4a5563;
-    --an-text-faint: #77828f;
+    --an-text-muted: #5c5358;
+    --an-text-faint: #8a7e84;
 
     /* 玻璃底是浅色，主色要更深才读得清 */
     --an-accent: #a83d57;
@@ -211,28 +255,39 @@
 
     --an-switch-on: #1f7a4c;
 
-    /* 毛玻璃主题：品牌块本身也做成一块磨砂玻璃 */
-    --an-brand-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(242, 172, 186, 0.52));
+    /* 毛玻璃主题：品牌块本身也做成一块透亮浅雾玻璃 */
+    --an-brand-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(242, 172, 186, 0.28));
     --an-brand-ink: #1b1517;
     --an-brand-ink-muted: rgba(27, 21, 23, 0.62);
-    --an-brand-pill-bg: rgba(255, 255, 255, 0.6);
+    --an-brand-pill-bg: rgba(255, 255, 255, 0.66);
 
-    --an-shadow-1: 0 1px 2px rgba(40, 12, 22, 0.08);
-    --an-shadow-2: 0 6px 20px -6px rgba(40, 12, 22, 0.22);
-    --an-shadow-3: 0 18px 48px -12px rgba(40, 12, 22, 0.4);
+    --an-card-highlight: inset 0 1px 1px rgba(255, 255, 255, 0.82);
+    --an-shadow-1: 0 10px 30px -12px rgba(92, 26, 48, 0.14);
+    --an-shadow-2: 0 14px 34px -10px rgba(92, 26, 48, 0.18);
+    --an-shadow-3: 0 22px 54px -12px rgba(92, 26, 48, 0.26);
 
-    --an-surface-alpha: 0.58;
-    --an-backdrop-blur: 24px;
+    --an-surface-alpha: 0.66;
+    --an-backdrop-blur: 28px;
     /*
-     * 毛玻璃的底图是有讲究的：
-     * 底图太暗，60% 白叠上去就成"脏灰"，玻璃的通透感全没了。
-     * 所以底图要**亮且有色相变化**（浅粉 → 洋红），
-     * 再叠一层白色高光，这样卡片边缘才会出现有层次的折射感。
+     * 柔和弥散玻璃：告别高饱和粉色大渐变，改用暖乳白底布叠加浅雾玫瑰与淡薰衣草光晕，
+     * 保持文字高可读性的同时营造 macOS 般的通透质感。
      */
     --an-backdrop-image:
-      radial-gradient(1000px 520px at 12% 6%, rgba(255, 255, 255, 0.6), transparent 62%),
-      radial-gradient(760px 420px at 88% 96%, rgba(255, 214, 228, 0.45), transparent 60%),
-      linear-gradient(135deg, #f7cad6 0%, #e493b3 46%, #a75a84 100%);
+      radial-gradient(920px 520px at 14% 8%, rgba(255, 255, 255, 0.92), transparent 62%),
+      radial-gradient(760px 440px at 86% 14%, rgba(242, 172, 186, 0.24), transparent 58%),
+      radial-gradient(820px 480px at 78% 88%, rgba(225, 206, 240, 0.22), transparent 60%),
+      linear-gradient(135deg, #fbf7f9 0%, #f5ecf0 52%, #eee5ef 100%);
+  }
+
+  /* 不支持 backdrop-filter 的浏览器 —— 在令牌层退回暖中性不透明底，确保用户覆盖仍有效 */
+  @supports not (backdrop-filter: blur(2px)) {
+    [data-theme='glass'] {
+      --an-sidebar-bg: #f6f2f4;
+      --an-topbar-bg: rgba(251, 248, 249, 0.96);
+      --an-surface: #faf7f8;
+      --an-surface-2: #f2ecef;
+      --an-backdrop-image: none;
+    }
   }
 
   /* ---------------- 紧凑密度 ---------------- */

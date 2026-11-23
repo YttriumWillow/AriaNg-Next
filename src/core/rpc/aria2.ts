@@ -140,9 +140,10 @@ export class Aria2Client {
     return this.call<string>('aria2.unpauseAll')
   }
 
-  /** 移除任务。第二个参数 true 表示同时删除已下载的文件。 */
+  /** 移除任务。仅在 withFiles 为 true 时追加第二个参数（兼容标准 aria2 单参数约定）。 */
   remove(gid: string, withFiles = false): Promise<string> {
-    return this.call<string>('aria2.remove', [gid, withFiles])
+    const params: unknown[] = withFiles ? [gid, true] : [gid]
+    return this.call<string>('aria2.remove', params)
   }
 
   /**

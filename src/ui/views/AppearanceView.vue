@@ -7,7 +7,7 @@
  *   2. 设计令牌（可视化调节，写回 CSS 变量）
  *   3. 自定义 CSS（任意规则，永远覆盖组件样式）
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppIcon from '@/ui/components/AppIcon.vue'
 import { useAppearanceStore } from '@/stores/appearance'
 import { useToastStore } from '@/stores/toast'
@@ -22,6 +22,13 @@ const { t } = useI18n()
 /** 编辑中的 CSS 文本（与 store 里的同步，但本地编辑手感更好）。 */
 const cssDraft = ref(appearance.settings.customCss)
 
+watch(
+  () => appearance.settings.customCss,
+  (val) => {
+    if (cssDraft.value !== val) cssDraft.value = val
+  },
+)
+
 /** 令牌按分组归类。 */
 const tokenGroups = computed(() => {
   const groups = new Map<string, typeof EDITABLE_TOKENS>()
@@ -33,9 +40,39 @@ const tokenGroups = computed(() => {
   return [...groups.entries()]
 })
 
-/** 当前令牌值（用户覆盖优先，否则用默认值）。 */
-function tokenValue(name: string, fallback: string): string {
-  return appearance.settings.tokenOverrides[name] ?? fallback
+/** 把 rgb()/rgba()/#rgb/#rrggbbaa 归一化为 <input type="color"> 要求的 7 位 #rrggbb。 */
+function normalizeColorHex(color: string, fallback: string): string {
+  const trimmed = color.trim()
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed.toLowerCase()
+  if (/^#[0-9a-f]{8}$/i.test(trimmed)) return trimmed.slice(0, 7).toLowerCase()
+  const shortHex = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(trimmed)
+  if (shortHex) {
+    return `#${shortHex[1]}${shortHex[1]}${shortHex[2]}${shortHex[2]}${shortHex[3]}${shortHex[3]}`.toLowerCase()
+  }
+  const match = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(trimmed)
+  if (match) {
+    const hex = [match[1], match[2], match[3]]
+      .map((n) => Math.max(0, Math.min(255, Number(n))).toString(16).padStart(2, '0'))
+      .join('')
+    return `#${hex}`
+  }
+  return fallback
+}
+
+/** 当前令牌值（用户覆盖优先；否则按当前生效主题读取 DOM 上的真实计算值）。 */
+function tokenValue(name: string, fallback: string, type?: string): string {
+  const overridden = appearance.settings.tokenOverrides[name]
+  if (overridden !== undefined) {
+    return type === 'color' ? normalizeColorHex(overridden, fallback) : overridden
+  }
+  // 读取 resolvedTheme 与 density，确保主题或密度切换时自动触发回显刷新
+  void appearance.resolvedTheme
+  void appearance.settings.density
+  if (typeof document !== 'undefined') {
+    const live = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    if (live) return type === 'color' ? normalizeColorHex(live, fallback) : live
+  }
+  return fallback
 }
 
 /** 令牌是否被用户改过。 */
@@ -76,7 +113,9 @@ function exportCss(): void {
 
   const parts: string[] = ['/* AriaNg-Next 自定义样式导出 */', '']
   if (tokenLines) {
-    parts.push(':root {', tokenLines, '}', '')
+    // 容器作用域下 @scope (.an-app) 内需匹配 .an-app 自身；全局作用域用 :root
+    const selector = appearance.settings.cssScope === 'container' ? '.an-app' : ':root'
+    parts.push(`${selector} {`, tokenLines, '}', '')
   }
   if (appearance.settings.customCss.trim()) {
     parts.push(appearance.settings.customCss.trim())
@@ -92,7 +131,7 @@ function exportCss(): void {
   toast.success(t('toast.cssExported'))
 }
 
-/** 导入 CSS 文件。 */
+/** 导入 CSS 文件：提取顶层令牌覆盖并校验剩余自定义 CSS。 */
 function importCss(event: Event): void {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -100,12 +139,42 @@ function importCss(event: Event): void {
 
   const reader = new FileReader()
   reader.onload = () => {
-    const text = String(reader.result)
-    cssDraft.value = text
-    appearance.setCustomCss(text)
-    toast.success(t('toast.cssImported'))
+    const raw = String(reader.result)
+    const tokenBlockPattern = /(?:^|\n)\s*(?::root|\.an-app)\s*\{([^}]*)\}/g
+    const extractedTokens: Record<string, string> = {}
+    const stripped = raw
+      .replace('/* AriaNg-Next 自定义样式导出 */', '')
+      .replace(tokenBlockPattern, (full, body: string) => {
+        const lines = body
+          .split(';')
+          .map((line) => line.trim())
+          .filter(Boolean)
+        const allAreTokens =
+          lines.length > 0 && lines.every((line) => /^--an-[a-zA-Z0-9_-]+\s*:\s*.+$/.test(line))
+        if (!allAreTokens) return full
+        for (const line of lines) {
+          const colon = line.indexOf(':')
+          extractedTokens[line.slice(0, colon).trim()] = line.slice(colon + 1).trim()
+        }
+        return ''
+      })
+      .trim()
+
+    for (const [name, value] of Object.entries(extractedTokens)) {
+      appearance.setToken(name, value)
+    }
+
+    cssDraft.value = stripped
+    appearance.setCustomCss(stripped)
+    if (appearance.cssDiagnostic) {
+      toast.error(appearance.cssDiagnostic.message)
+    } else {
+      toast.success(t('toast.cssImported'))
+    }
   }
   reader.readAsText(file)
+  // 清空 file input，确保再次选择同一个文件仍会触发 change
+  input.value = ''
 }
 
 function resetCss(): void {
@@ -174,7 +243,7 @@ function resetCss(): void {
               <option value="compact">{{ t('appearance.densityCompact') }}</option>
             </select>
           </div>
-          <div v-if="appearance.settings.theme === 'glass'" class="an-field" style="flex: 1; min-width: 240px">
+          <div v-if="appearance.resolvedTheme === 'glass'" class="an-field" style="flex: 1; min-width: 240px">
             <label class="an-field__label">{{ t('appearance.glassBackdrop') }}</label>
             <input
               class="an-input"
@@ -201,17 +270,28 @@ function resetCss(): void {
           <div style="display: grid; gap: 8px">
             <div v-for="token in tokens" :key="token.name" class="an-token-row">
               <span class="an-token-row__label">{{ token.label }}</span>
-              <span v-if="token.type === 'color'" class="an-token-row__swatch">
-                <input
-                  type="color"
-                  :value="tokenValue(token.name, token.defaultValue)"
-                  @input="onColorChange(token.name, $event)"
-                />
+              <span v-if="token.type === 'color'" class="an-token-row__control">
+                <span class="an-token-row__swatch">
+                  <input
+                    type="color"
+                    :value="tokenValue(token.name, token.defaultValue, token.type)"
+                    @input="onColorChange(token.name, $event)"
+                  />
+                </span>
+                <button
+                  v-if="isOverridden(token.name)"
+                  class="an-btn an-btn--sm an-btn--ghost an-btn--icon"
+                  type="button"
+                  :title="t('appearance.resetToken')"
+                  @click="appearance.resetToken(token.name)"
+                >
+                  <AppIcon class="an-btn__icon" name="refresh" :size="12" />
+                </button>
               </span>
               <span v-else class="an-token-row__control">
                 <input
                   class="an-input"
-                  :value="tokenValue(token.name, token.defaultValue)"
+                  :value="tokenValue(token.name, token.defaultValue, token.type)"
                   @change="onTokenChange(token.name, $event)"
                 />
                 <button

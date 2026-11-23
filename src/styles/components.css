@@ -9,7 +9,7 @@
  *       .an-block__element   元素
  *       .an-block--modifier  修饰
  *     用户自定义 CSS 主要作用在这些类上，所以请勿随意改名。
- *  3. 本层不允许出现 !important —— 优先级由 @layer 保证。
+ *  3. 本层除末尾 prefers-reduced-motion 无障碍规则外，不允许出现 !important —— 优先级由 @layer 保证。
  */
 
 @layer components {
@@ -21,6 +21,7 @@
     display: grid;
     grid-template-columns: var(--an-sidebar-width) minmax(0, 1fr);
     min-height: 100dvh;
+    color: var(--an-text);
     background: transparent;
   }
 
@@ -36,31 +37,30 @@
     flex-direction: column;
     gap: var(--an-space-4);
     padding: var(--an-space-4) var(--an-space-3);
-    background: var(--an-surface);
+    background: var(--an-sidebar-bg);
     border-right: 1px solid var(--an-border);
   }
 
   /*
-   * 品牌块：侧栏左上角的渐变主题色控件。
+   * 品牌块：侧栏左上角的紧凑身份控件。
    *
    * 它承载三件事：产品名、aria2-next 核心的连接状态、版本号。
-   * 把它们从顶栏挪到这里，是因为「我是谁 / 连上了吗」属于**身份信息**，
-   * 而顶栏应该留给「我现在能做什么」这类**全局操作**。
+   * 保持 58px 左右的精致高度，避免在窄高比例下显得头重脚轻。
    */
   .an-brand {
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: var(--an-space-4);
-    padding: var(--an-space-4);
+    gap: 6px;
+    padding: 12px 14px;
     border-radius: var(--an-radius-lg);
     background: var(--an-brand-bg);
     color: var(--an-brand-ink);
+    border: 1px solid var(--an-border);
     overflow: hidden;
-    box-shadow: var(--an-shadow-1);
-    /* 给一个明确的高度，让它成为侧栏里一个有分量的「品牌块」 */
-    min-height: 140px;
+    box-shadow: var(--an-card-highlight), var(--an-shadow-1);
+    min-height: 58px;
     /* 它是一个链接（点回仪表盘） */
     text-decoration: none;
     transition: box-shadow var(--an-transition), transform var(--an-transition);
@@ -68,17 +68,18 @@
 
   /* 品牌块的悬停反馈 —— 它可点击，得让人看出来 */
   .an-brand:hover {
-    box-shadow: var(--an-shadow-2);
+    box-shadow: var(--an-card-highlight), var(--an-shadow-2);
     transform: translateY(-1px);
   }
 
-  /* 顶部一层白色高光 —— 让渐变有陶瓷/玻璃的质感，而不是一块死板的色块 */
+  /* 顶部一层轻薄高光 —— 让渐变更有质感而不刺眼 */
   .an-brand::before {
     content: '';
     position: absolute;
     inset: 0 0 auto 0;
-    height: 62%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent);
+    height: 48%;
+    opacity: 0.55;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent);
     pointer-events: none;
   }
 
@@ -296,13 +297,29 @@
     align-items: center;
     gap: var(--an-space-3);
     height: var(--an-topbar-height);
-    padding: 0 var(--an-space-5);
-    background: var(--an-surface);
+    padding: 0 var(--an-space-6);
+    background: var(--an-topbar-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--an-border);
   }
 
   .an-topbar__spacer {
     flex: 1;
+  }
+
+  .an-topbar__mobile-host {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .an-topbar__mobile-host .an-select {
+    max-width: 140px;
+    height: 28px;
+    min-height: 28px;
+    font-size: var(--an-text-xs);
   }
 
   .an-topbar__group {
@@ -316,7 +333,7 @@
   .an-content {
     flex: 1;
     min-width: 0;
-    padding: var(--an-space-5);
+    padding: 24px 32px;
     display: flex;
     flex-direction: column;
     gap: var(--an-space-4);
@@ -343,7 +360,10 @@
   .an-page {
     display: flex;
     flex-direction: column;
-    gap: var(--an-space-4);
+    gap: 20px;
+    width: 100%;
+    max-width: 1240px;
+    margin: 0 auto;
     min-width: 0;
   }
 
@@ -381,7 +401,7 @@
     background: var(--an-surface);
     border: 1px solid var(--an-border);
     border-radius: var(--an-radius-lg);
-    box-shadow: var(--an-shadow-1);
+    box-shadow: var(--an-card-highlight), var(--an-shadow-1);
   }
 
   .an-card__head {
@@ -434,11 +454,11 @@
     background: var(--an-surface);
     border: 1px solid var(--an-border);
     border-radius: var(--an-radius-lg);
-    padding: var(--an-space-3) var(--an-space-4);
-    box-shadow: var(--an-shadow-1);
+    padding: 17px 20px;
+    box-shadow: var(--an-card-highlight), var(--an-shadow-1);
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 5px;
     min-width: 0;
   }
 
@@ -449,11 +469,11 @@
   }
 
   .an-stat__value {
-    font-size: var(--an-text-2xl);
-    font-weight: 620;
+    font-size: 28px;
+    font-weight: 700;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
-    line-height: 1.25;
+    line-height: 1.2;
   }
 
   .an-stat__meta {
@@ -763,7 +783,7 @@
   }
 
   .an-table td {
-    padding: var(--an-space-2) var(--an-space-3);
+    padding: 13px var(--an-space-3);
     border-bottom: 1px solid var(--an-border);
     vertical-align: middle;
   }
@@ -817,11 +837,12 @@
     display: flex;
     gap: 2px;
     justify-content: flex-end;
-    opacity: 0;
+    opacity: 0.68;
     transition: opacity var(--an-transition);
   }
 
   .an-table tbody tr:hover .an-task-actions,
+  .an-table tbody tr:focus-within .an-task-actions,
   .an-task-card:focus-within .an-task-actions {
     opacity: 1;
   }
@@ -917,33 +938,33 @@
   }
 
   .an-badge--bt {
-    background: rgba(96, 130, 200, 0.14);
-    color: #4a6ea8;
+    background: var(--an-proto-bt-soft);
+    color: var(--an-proto-bt);
   }
 
   .an-badge--ed2k {
-    background: rgba(122, 140, 90, 0.16);
-    color: #5d7136;
+    background: var(--an-proto-ed2k-soft);
+    color: var(--an-proto-ed2k);
   }
 
   .an-badge--hls {
-    background: rgba(176, 105, 60, 0.14);
-    color: #9a5a30;
+    background: var(--an-proto-hls-soft);
+    color: var(--an-proto-hls);
   }
 
   .an-badge--dash {
-    background: rgba(150, 90, 160, 0.14);
-    color: #85569a;
+    background: var(--an-proto-dash-soft);
+    color: var(--an-proto-dash);
   }
 
   .an-badge--sftp {
-    background: rgba(90, 120, 150, 0.14);
-    color: #4c6b8a;
+    background: var(--an-proto-sftp-soft);
+    color: var(--an-proto-sftp);
   }
 
   .an-badge--metalink {
-    background: rgba(120, 120, 120, 0.14);
-    color: #666;
+    background: var(--an-proto-metalink-soft);
+    color: var(--an-proto-metalink);
   }
 
   .an-badge--success {
@@ -1655,48 +1676,54 @@
 
   /* 三个预览各自配色（与 tokens.css 的三套主题保持一致） */
   .an-theme-card__preview--light {
-    background: #faf7f8;
+    background: #fbf8f9;
   }
   .an-theme-card__preview--light .an-theme-card__bar {
-    background: #fff;
-    border: 1px solid #eae2e5;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 2px 8px rgba(92, 26, 48, 0.06);
   }
   .an-theme-card__preview--light .an-theme-card__side {
-    background: #f0eaec;
+    background: #f6f2f4;
   }
   .an-theme-card__preview--light .an-theme-card__main {
-    background: #fff;
-    border: 1px solid #eae2e5;
+    background: #ffffff;
+    box-shadow: 0 6px 16px -6px rgba(92, 26, 48, 0.14);
   }
 
   .an-theme-card__preview--dark {
-    background: #161113;
+    background: #131012;
   }
   .an-theme-card__preview--dark .an-theme-card__bar {
-    background: #1e181a;
-    border: 1px solid #322a2d;
+    background: #1d181b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
   .an-theme-card__preview--dark .an-theme-card__side {
-    background: #272023;
+    background: #171316;
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
   .an-theme-card__preview--dark .an-theme-card__main {
-    background: #1e181a;
-    border: 1px solid #322a2d;
+    background: #1d181b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
   .an-theme-card__preview--glass {
-    background: linear-gradient(135deg, #f7cad6, #e493b3 46%, #a75a84);
+    background: radial-gradient(circle at 20% 20%, rgba(242, 172, 186, 0.32), transparent 60%),
+      radial-gradient(circle at 80% 80%, rgba(225, 206, 240, 0.32), transparent 60%),
+      linear-gradient(135deg, #fbf7f9, #f3ebf1);
   }
   .an-theme-card__preview--glass .an-theme-card__bar {
-    background: rgba(255, 255, 255, 0.22);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.68);
+    border: 1px solid rgba(255, 255, 255, 0.78);
   }
   .an-theme-card__preview--glass .an-theme-card__side {
-    background: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.52);
+    border: 1px solid rgba(255, 255, 255, 0.68);
   }
   .an-theme-card__preview--glass .an-theme-card__main {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.66);
+    border: 1px solid rgba(255, 255, 255, 0.78);
   }
 
   /* ================================================================
@@ -1709,18 +1736,11 @@
   [data-theme='glass'] .an-stat,
   [data-theme='glass'] .an-toolbar,
   [data-theme='glass'] .an-task-card,
-  [data-theme='glass'] .an-dialog {
+  [data-theme='glass'] .an-dialog,
+  [data-theme='glass'] .an-drawer,
+  [data-theme='glass'] .an-toast {
     backdrop-filter: blur(var(--an-backdrop-blur)) saturate(150%);
     -webkit-backdrop-filter: blur(var(--an-backdrop-blur)) saturate(150%);
-  }
-
-  /* 不支持 backdrop-filter 的浏览器 —— 退回不透明，保证可读性 */
-  @supports not (backdrop-filter: blur(2px)) {
-    [data-theme='glass'] {
-      --an-surface: #f2f4f7;
-      --an-surface-2: #e7eaef;
-      --an-backdrop-image: none;
-    }
   }
 
   /* ================================================================
@@ -1865,12 +1885,25 @@
       z-index: 30;
     }
 
-    /* 手机端侧栏变成了底部标签栏，品牌块和速率都放不下，直接隐藏 */
+    /* 手机端侧栏变成了底部标签栏，品牌块、主机区和速率都放不下，直接隐藏（主机切换移至顶栏） */
     .an-brand,
     .an-sidebar__section-title,
+    .an-sidebar__section--hosts,
     .an-sidebar__footer,
     .an-host-list {
       display: none;
+    }
+
+    .an-topbar__mobile-host {
+      display: flex;
+    }
+
+    .an-nav-item--active::before {
+      display: none;
+    }
+
+    .an-toasts {
+      bottom: 72px;
     }
 
     .an-sidebar__section {

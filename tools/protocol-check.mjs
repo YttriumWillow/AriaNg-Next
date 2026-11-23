@@ -39,7 +39,8 @@ const args = process.argv.slice(2)
 
 function argValue(flag, fallback = '') {
   const index = args.indexOf(flag)
-  return index >= 0 && args[index + 1] ? args[index + 1] : fallback
+  const val = index >= 0 ? args[index + 1] : ''
+  return val && !val.startsWith('--') ? val : fallback
 }
 
 const URL = argValue('--url', 'http://127.0.0.1:6800/jsonrpc')
@@ -67,6 +68,9 @@ async function rpc(method, params = []) {
       params: SECRET ? [`token:${SECRET}`, ...params] : params,
     }),
   })
+  if (!res.ok) {
+    throw new Error(`${method} → HTTP ${res.status} ${res.statusText}`)
+  }
   const json = await res.json()
   if (json.error) throw new Error(`${method} → [${json.error.code}] ${json.error.message}`)
   return json.result

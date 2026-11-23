@@ -98,6 +98,34 @@ export function dedupeHostIds(list: HostConfig[]): { list: HostConfig[]; changed
   return { list: result, changed }
 }
 
+/** 清洗从 localStorage 读出来的主机列表，防止坏 JSON 或缺字段导致初始化崩溃。 */
+function sanitizeHosts(raw: unknown): HostConfig[] {
+  if (!Array.isArray(raw)) return [{ ...DEFAULT_HOST }]
+
+  const cleaned: HostConfig[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const record = item as Record<string, unknown>
+    const url = typeof record.url === 'string' && record.url.trim() ? record.url.trim() : ''
+    if (!url) continue
+
+    const poll = typeof record.pollIntervalMs === 'number' && Number.isFinite(record.pollIntervalMs)
+      ? Math.max(200, Math.round(record.pollIntervalMs))
+      : 1000
+
+    cleaned.push({
+      id: typeof record.id === 'string' && record.id.trim() ? record.id : `host-${cleaned.length + 1}`,
+      name: typeof record.name === 'string' ? record.name : '',
+      url,
+      secret: typeof record.secret === 'string' ? record.secret : '',
+      pollIntervalMs: poll,
+      autoConnect: typeof record.autoConnect === 'boolean' ? record.autoConnect : true,
+    })
+  }
+
+  return cleaned.length > 0 ? cleaned : [{ ...DEFAULT_HOST }]
+}
+
 export const useHostsStore = defineStore('hosts', () => {
   /*
    * 错误提示要跟着界面语言走，所以这里拿一份翻译函数。
@@ -109,7 +137,7 @@ export const useHostsStore = defineStore('hosts', () => {
 
   /* ---------------- 配置 ---------------- */
 
-  const initialHosts = loadJson<HostConfig[]>(STORAGE_KEYS.hosts, [DEFAULT_HOST])
+  const initialHosts = sanitizeHosts(loadJson<unknown>(STORAGE_KEYS.hosts, [DEFAULT_HOST]))
   const deduped = dedupeHostIds(initialHosts)
 
   const hosts = ref<HostConfig[]>(deduped.list)
@@ -206,6 +234,11 @@ export const useHostsStore = defineStore('hosts', () => {
     // 地址或密钥变了，需要重连
     if (patch.url !== undefined || patch.secret !== undefined) {
       void connect(hostId)
+    } else if (patch.pollIntervalMs !== undefined) {
+      const client = getClient(hostId)
+      if (client && runtimeFor(hostId).status === 'connected') {
+        startPolling(hostId, client)
+      }
     }
   }
 
@@ -216,11 +249,15 @@ export const useHostsStore = defineStore('hosts', () => {
     delete runtimes[hostId]
     if (activeHostId.value === hostId) {
       activeHostId.value = hosts.value[0]?.id ?? ''
+      useTasksStore().closeDetail()
     }
     persist()
   }
 
   function selectHost(hostId: string): void {
+    if (activeHostId.value !== hostId) {
+      useTasksStore().closeDetail()
+    }
     activeHostId.value = hostId
     persist()
   }
@@ -239,24 +276,36 @@ export const useHostsStore = defineStore('hosts', () => {
     runtime.status = 'connecting'
     runtime.error = ''
 
-    const transport = createTransport({
-      url: host.url,
-      secret: host.secret.trim() || undefined,
-      onStatus: (status, detail) => {
-        runtime.status = status
-        if (detail && status === 'error') runtime.error = detail
-      },
-    })
-
-    const client = new Aria2Client(transport)
+    const client = new Aria2Client(
+      createTransport({
+        url: host.url,
+        secret: (host.secret ?? '').trim() || undefined,
+        onStatus: (status, detail) => {
+          // 如果已经有更新的连接替代了当前客户端，旧 transport 的迟到事件必须忽略
+          if (getClient(hostId) !== client) return
+          runtime.status = status
+          if (detail && status === 'error') runtime.error = detail
+        },
+      }),
+    )
     setClient(hostId, client)
 
     try {
       // 能力探测：先问清楚后端支持什么，再决定 UI 显示哪些功能
-      runtime.capabilities = await probeCapabilities(client)
+      const capabilities = await probeCapabilities(client)
+      // 异步等待期间可能被重连、断开或删库；只有仍是当前客户端时才继续接管
+      if (getClient(hostId) !== client) {
+        client.connection.close()
+        return
+      }
+      runtime.capabilities = capabilities
       runtime.status = 'connected'
       startPolling(hostId, client)
     } catch (error) {
+      if (getClient(hostId) !== client) return
+      // 探测失败就彻底关掉 transport，防止 WS 后台重连后把状态点刷成绿色「幽灵已连接」
+      client.connection.close()
+      removeClient(hostId)
       runtime.status = 'error'
       runtime.error = describeError(error, t)
     }
@@ -266,6 +315,7 @@ export const useHostsStore = defineStore('hosts', () => {
   function disconnect(hostId: string): void {
     pollers.get(hostId)?.stop()
     pollers.delete(hostId)
+    getClient(hostId)?.connection.close()
     removeClient(hostId)
     const runtime = runtimes[hostId]
     if (runtime) {
@@ -276,12 +326,15 @@ export const useHostsStore = defineStore('hosts', () => {
 
   /** 启动轮询。 */
   function startPolling(hostId: string, client: Aria2Client): void {
+    // 防止同主机残留旧轮询器并行触发
+    pollers.get(hostId)?.stop()
+
     const host = hosts.value.find((item) => item.id === hostId)
     const runtime = runtimeFor(hostId)
     const tasks = useTasksStore()
 
     const poller = new Poller({
-      intervalMs: host?.pollIntervalMs ?? 1000,
+      intervalMs: Math.max(200, host?.pollIntervalMs ?? 1000),
       onError: (error) => {
         runtime.error = describeError(error, t)
       },

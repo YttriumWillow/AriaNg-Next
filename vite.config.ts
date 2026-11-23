@@ -36,6 +36,15 @@ export default defineConfig({
     target: 'es2022',
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        // 将稳定的框架核心依赖拆入独立 vendor chunk，配合 base: './' 既保持纯静态部署兼容，
+        // 又能让业务页面更新时浏览器继续命中长期缓存
+        manualChunks: {
+          vendor: ['vue', 'pinia', 'vue-router'],
+        },
+      },
+    },
   },
   test: {
     environment: 'node',

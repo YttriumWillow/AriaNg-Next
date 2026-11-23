@@ -2,7 +2,7 @@
  * 极简 i18n。
  *
  * 为什么不用 vue-i18n？
- * 这个面板的文案量不大（约 120 条），而引入 vue-i18n 会带来
+ * 这个面板的文案量不大（约 240 条），而引入 vue-i18n 会带来
  * 「按需加载 / 语言包分包 / 编译期消息校验」等一堆额外概念。
  * 现阶段用一个几十行的自实现更直观，也少一个依赖。
  *
@@ -27,13 +27,24 @@ const messages: Record<Locale, Record<string, string>> = {
   en,
 }
 
-/** 当前语言。持久化到 localStorage。 */
-const locale = ref<Locale>(loadJson<Locale>(STORAGE_KEYS.locale, 'zh-CN'))
+function normalizeLocale(raw: unknown): Locale {
+  return raw === 'en' || raw === 'zh-CN' ? raw : 'zh-CN'
+}
+
+/** 当前语言。持久化到 localStorage，并校对是否合法避免坏缓存导致崩溃。 */
+const locale = ref<Locale>(normalizeLocale(loadJson<unknown>(STORAGE_KEYS.locale, 'zh-CN')))
+
+if (typeof document !== 'undefined') {
+  document.documentElement.setAttribute('lang', locale.value)
+}
 
 export function setLocale(next: Locale): void {
-  locale.value = next
-  saveJson(STORAGE_KEYS.locale, next)
-  document.documentElement.setAttribute('lang', next)
+  const safe = normalizeLocale(next)
+  locale.value = safe
+  saveJson(STORAGE_KEYS.locale, safe)
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('lang', safe)
+  }
 }
 
 /**
@@ -44,7 +55,7 @@ export function setLocale(next: Locale): void {
  */
 export function t(key: string, params?: Record<string, string | number>): string {
   // 找不到就用中文兜底，再找不到就返回 key 本身（便于发现遗漏）
-  let text = messages[locale.value][key] ?? zhCN[key] ?? key
+  let text = messages[locale.value]?.[key] ?? zhCN[key] ?? key
   if (params) {
     for (const [name, value] of Object.entries(params)) {
       text = text.replaceAll(`{${name}}`, String(value))

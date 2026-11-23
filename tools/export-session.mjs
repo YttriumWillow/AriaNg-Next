@@ -166,16 +166,20 @@ function callSummary(part) {
   return bits.join('\n')
 }
 
-/** 把可能超长的文本收进 details 块。 */
+/** 把可能超长的文本收进 details 块，动态选择比正文最长反引号串更长的围栏。 */
 function block(summary, body, lang = '') {
   if (!body) return ''
-  const fence = body.includes('```') ? '````' : '```'
+  let maxRun = 2
+  for (const m of body.matchAll(/`+/g)) {
+    if (m[0].length > maxRun) maxRun = m[0].length
+  }
+  const fence = '`'.repeat(maxRun + 1)
   return `<details>\n<summary>${summary}</summary>\n\n${fence}${lang}\n${body}\n${fence}\n\n</details>\n`
 }
 
-/** 围栏代码块内的内容要转义反引号，否则会破坏 Markdown 结构。 */
+/** 围栏代码块内的内容打断连续反引号，防止破坏外层 Markdown 结构。 */
 function safeFence(body) {
-  return body.replace(/```/g, '```')
+  return String(body ?? '').replace(/```/g, '``\u200b`')
 }
 
 /**
@@ -193,18 +197,19 @@ function normalizeDeliveries(text) {
       return `> 📎 交付文件（原始路径，导出包内不含）：\n> ${files.map((f) => `\`${f}\``).join('\n> ')}\n`
     })
     .replace(/<media[^>]*src="([^"]+)"[^>]*\/?>/g, (_all, src) => `📎 \`${src}\``)
-    .replace(/<[^>]{1,80}>/g, (tag) => {
-      // 其它自定义标签转成普通文本，保留内容
-      return tag.startsWith('</') ? '' : ''
-    })
+    .replace(/<\/?(?:deliver-assets|media)\b[^>]*>/g, '')
 }
 
 const md = []
 const push = (s = '') => md.push(s)
 
-const times = records.map((r) => r.message?.timestamp).filter(Boolean)
-const startTime = Math.min(...times)
-const endTime = Math.max(...times)
+const times = records.map((r) => r.message?.timestamp).filter((t) => typeof t === 'number' && Number.isFinite(t))
+let startTime = times[0] ?? Date.now()
+let endTime = times[0] ?? Date.now()
+for (const ts of times) {
+  if (ts < startTime) startTime = ts
+  if (ts > endTime) endTime = ts
+}
 
 push('# 会话记录')
 push()

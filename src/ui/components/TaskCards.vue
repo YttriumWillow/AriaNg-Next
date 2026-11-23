@@ -25,21 +25,65 @@ const emit = defineEmits<{
   detail: [gid: string]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 function progressVariant(task: Task): 'default' | 'seeding' | 'paused' | 'error' | 'live' {
   if (task.status === 'error') return 'error'
   if (task.status === 'paused') return 'paused'
   if (task.status === 'complete') return 'seeding'
+  if (task.status === 'active' && task.totalLength > 0 && task.completedLength >= task.totalLength) {
+    return 'seeding'
+  }
   if (task.media?.live) return 'live'
   return 'default'
+}
+
+function statusClass(task: Task): string {
+  switch (task.status) {
+    case 'active':
+      return 'an-status-dot--active'
+    case 'waiting':
+      return 'an-status-dot--waiting'
+    case 'paused':
+      return 'an-status-dot--paused'
+    case 'error':
+      return 'an-status-dot--error'
+    case 'complete':
+      return 'an-status-dot--complete'
+    default:
+      return ''
+  }
 }
 </script>
 
 <template>
   <div class="an-task-cards">
-    <article v-for="task in tasks" :key="task.gid" class="an-task-card">
+    <!-- 按卡片缓存展示字段：未变化任务跳过 VNode diff，切换语言时随 locale 刷新 -->
+    <article
+      v-for="task in tasks"
+      :key="task.gid"
+      v-memo="[
+        task.gid,
+        task.status,
+        task.name,
+        task.protocol,
+        task.progress,
+        task.completedLength,
+        task.totalLength,
+        task.downloadSpeed,
+        task.uploadSpeed,
+        task.etaSeconds,
+        task.errorMessage,
+        task.media?.state,
+        task.media?.live,
+        task.media?.progress,
+        busyGids.has(task.gid),
+        locale,
+      ]"
+      class="an-task-card"
+    >
       <div class="an-task-name">
+        <span class="an-status-dot" :class="statusClass(task)" />
         <span class="an-task-name__text" :title="task.name">{{ task.name }}</span>
         <ProtocolBadge :protocol="task.protocol" />
       </div>
@@ -84,6 +128,16 @@ function progressVariant(task: Task): 'default' | 'seeding' | 'paused' | 'error'
           <AppIcon class="an-btn__icon" name="play" :size="13" />
         </button>
         <button
+          v-if="task.status === 'error'"
+          class="an-btn an-btn--sm an-btn--ghost an-btn--icon"
+          type="button"
+          :title="t('task.retry')"
+          :disabled="busyGids.has(task.gid)"
+          @click="emit('action', 'retry', task.gid)"
+        >
+          <AppIcon class="an-btn__icon" name="refresh" :size="13" />
+        </button>
+        <button
           class="an-btn an-btn--sm an-btn--ghost an-btn--icon"
           type="button"
           :title="t('task.remove')"
@@ -96,3 +150,13 @@ function progressVariant(task: Task): 'default' | 'seeding' | 'paused' | 'error'
     </article>
   </div>
 </template>
+
+<style>
+@layer components {
+  /* 视口外任务卡片跳过布局与绘制，提升长列表滚动与轮询性能 */
+  .an-task-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 160px;
+  }
+}
+</style>
