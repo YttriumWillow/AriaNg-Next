@@ -108,6 +108,35 @@ node tools/mock-aria2.mjs --port 6801 --secret mytoken
 
 > 它默认用 6801 而不是 6800，因为 6800 是 aria2-next 自己的默认端口。
 
+### `tools/export-session.mjs` —— 把开发过程存档成可读的会话记录
+
+开发过程中那些「为什么这么改」的推理过程，散落在一次会话里就没了。
+这个脚本把本地会话存档导出成一份**能直接读的 Markdown**，外加无损的原始数据。
+
+```bash
+node tools/export-session.mjs <会话目录> <输出目录>
+```
+
+产物结构：
+
+| 路径 | 内容 |
+|---|---|
+| `conversation.md` | 可读版对话记录：思考过程、工具调用、工具输出都折叠在 `<details>` 里 |
+| `media/` | 会话中出现过的图片（从内联 base64 解出来的） |
+| `attachments/` | 用户上传的原始文件 |
+| `tool-outputs/` | 工具输出落盘文件 |
+| `raw/messages.jsonl` | 原始消息流，一条一行 JSON，无损 |
+| `raw/snapshots/` | 上下文压缩前的完整历史快照 |
+
+几个值得注意的地方：
+
+- 会话里图片是**内联 base64**（`{ type: 'image', data, mimeType }`），
+  不解码的话文档会被几十万字符的 base64 撑爆；
+- 工具输出的落盘文件名**不是** toolCallId，而是内容 hash，
+  所以「按调用找文件」这条路走不通 —— 完整内容要回 `raw/` 里找；
+- 助手回复里的交付标签（`<media src="本地路径" />`）在导出后已不可访问，
+  会被转成「本地文件：…」的纯文本记录。
+
 ### `tools/ff-verify.mjs` —— 在真实 Firefox 里做视觉与度量验证
 
 Firefox 的 `--screenshot` 在页面 `load` 事件时立刻截图，而面板是异步的（那时 WebSocket 还没连上），
